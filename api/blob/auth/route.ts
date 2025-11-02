@@ -1,15 +1,15 @@
-import { NextRequest, NextResponse } from 'next/server';
+// Using standard Web API types instead of Next.js
 import { list } from '@vercel/blob';
 
-export async function POST(request: NextRequest) {
+export async function POST(request: Request) {
   try {
     const blobToken = process.env.BLOB_READ_WRITE_TOKEN;
     const primaryPath = process.env.BLOB_STORE_PRIMARY_PATH || 'quest-app/data/main-config.json';
 
     if (!blobToken) {
-      return NextResponse.json(
-        { error: 'Blob Store token not configured' },
-        { status: 500 }
+      return new Response(
+        JSON.stringify({ error: 'Blob Store token not configured' }),
+        { status: 500, headers: { 'Content-Type': 'application/json' } }
       );
     }
 
@@ -17,9 +17,9 @@ export async function POST(request: NextRequest) {
     const { password } = body;
 
     if (!password) {
-      return NextResponse.json(
-        { error: 'Password is required' },
-        { status: 400 }
+      return new Response(
+        JSON.stringify({ error: 'Password is required' }),
+        { status: 400, headers: { 'Content-Type': 'application/json' } }
       );
     }
 
@@ -33,9 +33,12 @@ export async function POST(request: NextRequest) {
 
     if (!mainConfigBlob) {
       // Default password for new installations
-      return NextResponse.json({
-        isValid: password === 'admin123'
-      });
+      return new Response(
+        JSON.stringify({
+          isValid: password === 'admin123'
+        }),
+        { status: 200, headers: { 'Content-Type': 'application/json' } }
+      );
     }
 
     // Fetch the configuration
@@ -47,15 +50,18 @@ export async function POST(request: NextRequest) {
     const config = await response.json();
     const storedPassword = config.adminPassword || 'admin123';
 
-    return NextResponse.json({
-      isValid: password === storedPassword
-    });
+    return new Response(
+      JSON.stringify({
+        isValid: password === storedPassword
+      }),
+      { status: 200, headers: { 'Content-Type': 'application/json' } }
+    );
 
   } catch (error) {
     console.error('API: Error verifying password:', error);
-    return NextResponse.json(
-      { error: 'Failed to verify password' },
-      { status: 500 }
+    return new Response(
+      JSON.stringify({ error: 'Failed to verify password' }),
+      { status: 500, headers: { 'Content-Type': 'application/json' } }
     );
   }
 }

@@ -1,15 +1,15 @@
-import { NextRequest, NextResponse } from 'next/server';
+// Using standard Web API types instead of Next.js
 import { put, list, head } from '@vercel/blob';
 
-export async function GET(request: NextRequest) {
+export async function GET(request: Request) {
   try {
     const blobToken = process.env.BLOB_READ_WRITE_TOKEN;
     const primaryPath = process.env.BLOB_STORE_PRIMARY_PATH || 'quest-app/data/main-config.json';
 
     if (!blobToken) {
-      return NextResponse.json(
-        { error: 'Blob Store token not configured' },
-        { status: 500 }
+      return new Response(
+        JSON.stringify({ error: 'Blob Store token not configured' }),
+        { status: 500, headers: { 'Content-Type': 'application/json' } }
       );
     }
 
@@ -23,11 +23,14 @@ export async function GET(request: NextRequest) {
 
     if (!mainConfigBlob) {
       // Return empty config if file doesn't exist
-      return NextResponse.json({
-        users: {},
-        commonQuests: [],
-        isBlobStore: true
-      });
+      return new Response(
+        JSON.stringify({
+          users: {},
+          commonQuests: [],
+          isBlobStore: true
+        }),
+        { status: 200, headers: { 'Content-Type': 'application/json' } }
+      );
     }
 
     // Fetch the configuration
@@ -38,30 +41,33 @@ export async function GET(request: NextRequest) {
 
     const config = await response.json();
 
-    return NextResponse.json({
-      users: config.users || {},
-      commonQuests: config.commonQuests || [],
-      isBlobStore: true
-    });
+    return new Response(
+      JSON.stringify({
+        users: config.users || {},
+        commonQuests: config.commonQuests || [],
+        isBlobStore: true
+      }),
+      { status: 200, headers: { 'Content-Type': 'application/json' } }
+    );
 
   } catch (error) {
     console.error('API: Error fetching users:', error);
-    return NextResponse.json(
-      { error: 'Failed to fetch users from Blob Store' },
-      { status: 500 }
+    return new Response(
+      JSON.stringify({ error: 'Failed to fetch users from Blob Store' }),
+      { status: 500, headers: { 'Content-Type': 'application/json' } }
     );
   }
 }
 
-export async function POST(request: NextRequest) {
+export async function POST(request: Request) {
   try {
     const blobToken = process.env.BLOB_READ_WRITE_TOKEN;
     const primaryPath = process.env.BLOB_STORE_PRIMARY_PATH || 'quest-app/data/main-config.json';
 
     if (!blobToken) {
-      return NextResponse.json(
-        { error: 'Blob Store token not configured' },
-        { status: 500 }
+      return new Response(
+        JSON.stringify({ error: 'Blob Store token not configured' }),
+        { status: 500, headers: { 'Content-Type': 'application/json' } }
       );
     }
 
@@ -100,17 +106,20 @@ export async function POST(request: NextRequest) {
       contentType: 'application/json'
     });
 
-    return NextResponse.json({
-      success: true,
-      message: 'Users updated successfully in Blob Store',
-      url: blob.url
-    });
+    return new Response(
+      JSON.stringify({
+        success: true,
+        message: 'Users updated successfully in Blob Store',
+        url: blob.url
+      }),
+      { status: 200, headers: { 'Content-Type': 'application/json' } }
+    );
 
   } catch (error) {
     console.error('API: Error updating users:', error);
-    return NextResponse.json(
-      { error: 'Failed to update users in Blob Store' },
-      { status: 500 }
+    return new Response(
+      JSON.stringify({ error: 'Failed to update users in Blob Store' }),
+      { status: 500, headers: { 'Content-Type': 'application/json' } }
     );
   }
 }

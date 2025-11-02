@@ -1,15 +1,15 @@
-import { NextRequest, NextResponse } from 'next/server';
+// Using standard Web API types instead of Next.js
 import { put, list } from '@vercel/blob';
 
-export async function GET(request: NextRequest) {
+export async function GET(request: Request) {
   try {
     const blobToken = process.env.BLOB_READ_WRITE_TOKEN;
     const primaryPath = process.env.BLOB_STORE_PRIMARY_PATH || 'quest-app/data/main-config.json';
 
     if (!blobToken) {
-      return NextResponse.json(
-        { error: 'Blob Store token not configured' },
-        { status: 500 }
+      return new Response(
+        JSON.stringify({ error: 'Blob Store token not configured' }),
+        { status: 500, headers: { 'Content-Type': 'application/json' } }
       );
     }
 
@@ -37,7 +37,10 @@ export async function GET(request: NextRequest) {
         }
       };
 
-      return NextResponse.json(defaultQuests);
+      return new Response(
+        JSON.stringify(defaultQuests),
+        { status: 200, headers: { 'Content-Type': 'application/json' } }
+      );
     }
 
     // Fetch the configuration
@@ -47,26 +50,29 @@ export async function GET(request: NextRequest) {
     }
 
     const config = await response.json();
-    return NextResponse.json(config.quests || {});
+    return new Response(
+      JSON.stringify(config.quests || {}),
+      { status: 200, headers: { 'Content-Type': 'application/json' } }
+    );
 
   } catch (error) {
     console.error('API: Error fetching quests:', error);
-    return NextResponse.json(
-      { error: 'Failed to fetch quests from Blob Store' },
-      { status: 500 }
+    return new Response(
+      JSON.stringify({ error: 'Failed to fetch quests from Blob Store' }),
+      { status: 500, headers: { 'Content-Type': 'application/json' } }
     );
   }
 }
 
-export async function POST(request: NextRequest) {
+export async function POST(request: Request) {
   try {
     const blobToken = process.env.BLOB_READ_WRITE_TOKEN;
     const primaryPath = process.env.BLOB_STORE_PRIMARY_PATH || 'quest-app/data/main-config.json';
 
     if (!blobToken) {
-      return NextResponse.json(
-        { error: 'Blob Store token not configured' },
-        { status: 500 }
+      return new Response(
+        JSON.stringify({ error: 'Blob Store token not configured' }),
+        { status: 500, headers: { 'Content-Type': 'application/json' } }
       );
     }
 
@@ -104,17 +110,20 @@ export async function POST(request: NextRequest) {
       contentType: 'application/json'
     });
 
-    return NextResponse.json({
-      success: true,
-      message: 'Quests updated successfully in Blob Store',
-      url: blob.url
-    });
+    return new Response(
+      JSON.stringify({
+        success: true,
+        message: 'Quests updated successfully in Blob Store',
+        url: blob.url
+      }),
+      { status: 200, headers: { 'Content-Type': 'application/json' } }
+    );
 
   } catch (error) {
     console.error('API: Error updating quests:', error);
-    return NextResponse.json(
-      { error: 'Failed to update quests in Blob Store' },
-      { status: 500 }
+    return new Response(
+      JSON.stringify({ error: 'Failed to update quests in Blob Store' }),
+      { status: 500, headers: { 'Content-Type': 'application/json' } }
     );
   }
 }
