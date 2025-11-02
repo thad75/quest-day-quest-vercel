@@ -1,8 +1,18 @@
-import { get, has, getAll, clone } from '@vercel/edge-config';
+import { get, has, getAll, clone, createClient } from '@vercel/edge-config';
 
 // Edge Config client for Vercel Storage
-// Utilise la variable d'environnement EDGE_CONFIG automatiquement
-// En production, Vercel remplit automatiquement cette variable
+// Multiple connection methods for maximum compatibility
+
+// Méthode alternative: créer un client directement
+let edgeConfigClient: ReturnType<typeof createClient> | null = null;
+
+try {
+  edgeConfigClient = createClient('ecfg_puwsypw5sv3zviw427nirgf4clyg');
+  console.log('Client Edge Config créé avec succès');
+} catch (error) {
+  console.log('Client Edge Config non disponible (normal en local):', error.message);
+  edgeConfigClient = null;
+}
 
 export interface EdgeConfigData {
   users: Record<string, any>;
@@ -15,32 +25,57 @@ export interface EdgeConfigData {
 
 export class EdgeConfigManager {
   /**
-   * Get all users from Edge Config
+   * Get all users from Edge Config (multiple methods)
    */
   static async getUsers(): Promise<Record<string, any>> {
+    // Méthode 1: Essayer avec le client direct
+    if (edgeConfigClient) {
+      try {
+        const users = await edgeConfigClient.get('users');
+        console.log('✅ Données utilisateurs chargées via client direct');
+        return clone(users) || {};
+      } catch (error) {
+        console.log('Client direct échoué, essai méthode par défaut:', error.message);
+      }
+    }
+
+    // Méthode 2: Essayer avec les fonctions globales
     try {
       const users = await get('users');
-      // Ne pas muter la valeur retournée - cloner si nécessaire
+      console.log('✅ Données utilisateurs chargées via méthode par défaut');
       return clone(users) || {};
     } catch (error) {
       if (error.message.includes('No connection string provided')) {
-        console.log('⚠️ EDGE_CONFIG non configuré sur Vercel. Voir EDGE_CONFIG_USAGE.md');
+        console.log('⚠️ EDGE_CONFIG non configuré sur Vercel. Instructions dans FIX_EDGE_CONFIG.md');
       } else {
-        console.log('Edge Config non disponible ou erreur:', error.message);
+        console.log('Edge Config non disponible (fallback vers JSON):', error.message);
       }
       return {};
     }
   }
 
   /**
-   * Get all quests from Edge Config
+   * Get all quests from Edge Config (multiple methods)
    */
   static async getQuests(): Promise<Record<string, any>> {
+    // Méthode 1: Essayer avec le client direct
+    if (edgeConfigClient) {
+      try {
+        const quests = await edgeConfigClient.get('quests');
+        console.log('✅ Données quêtes chargées via client direct');
+        return clone(quests) || {};
+      } catch (error) {
+        console.log('Client direct échoué pour les quêtes, essai méthode par défaut:', error.message);
+      }
+    }
+
+    // Méthode 2: Essayer avec les fonctions globales
     try {
       const quests = await get('quests');
+      console.log('✅ Données quêtes chargées via méthode par défaut');
       return clone(quests) || {};
     } catch (error) {
-      console.log('Edge Config non disponible pour les quêtes:', error.message);
+      console.log('Edge Config non disponible pour les quêtes (fallback vers JSON):', error.message);
       return {};
     }
   }
