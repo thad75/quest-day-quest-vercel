@@ -1,36 +1,21 @@
 import { useState, useEffect } from "react";
-import { Quest, PlayerProgress } from "@/types/quest";
-import { LevelSection } from "@/components/LevelSection";
+import { PlayerProgress, UserProfile } from "@/types/quest";
 import { ProgressBar } from "@/components/ProgressBar";
 import { CelebrationAnimation } from "@/components/CelebrationAnimation";
+import { EnhancedQuestView } from "@/components/EnhancedQuestView";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 import { Gamepad2, User } from "lucide-react";
 import { useNavigate } from "react-router-dom";
+import { getAvatarEmoji } from "@/components/ProfileEditor";
+import QuestManager from "@/lib/quest-manager";
 
-const INITIAL_QUESTS: Quest[] = [
-  // Niveau 1
-  { id: "1-1", title: "Manger riz + bouillon + petit pois", level: 1, xp: 10, completed: false },
-  { id: "1-2", title: "Ouvrir 2 boosters", level: 1, xp: 15, completed: false },
-  { id: "1-3", title: "Nettoyer son bureau", level: 1, xp: 20, completed: false },
-  
-  // Niveau 2
-  { id: "2-1", title: "Lancer bobby", level: 2, xp: 25, completed: false },
-  { id: "2-2", title: "Boire 1 bouteille d'eau", level: 2, xp: 30, completed: false },
-  { id: "2-3", title: "Laver ses cheveux", level: 2, xp: 25, completed: false },
-  { id: "2-4", title: "Rédiger chapitre 2 (30%)", level: 2, xp: 50, completed: false },
-  
-  // Niveau 3
-  { id: "3-1", title: "Aller à Auchan acheter de l'eau", level: 3, xp: 40, completed: false },
-  { id: "3-2", title: "Faire 10 squats", level: 3, xp: 35, completed: false },
-];
-
-const STORAGE_KEY = "daily-quests";
+const STORAGE_KEY = "daily-quests"; // Legacy storage key for migration
 const CELEBRATION_KEY = "daily-celebration";
+const PROFILE_KEY = "user-profile";
 
 const Index = () => {
   const navigate = useNavigate();
-  const [quests, setQuests] = useState<Quest[]>([]);
   const [progress, setProgress] = useState<PlayerProgress>({
     currentLevel: 1,
     currentXP: 0,
@@ -38,6 +23,24 @@ const Index = () => {
   });
   const [showCelebration, setShowCelebration] = useState(false);
   const [hasCelebratedToday, setHasCelebratedToday] = useState(false);
+  const [username, setUsername] = useState("Aventurier");
+  const [avatar, setAvatar] = useState("default");
+  const [profile, setProfile] = useState<UserProfile>({
+    username: "Aventurier",
+    totalXP: 0,
+    currentLevel: 1,
+    currentXP: 0,
+    xpToNextLevel: 100,
+    questsCompleted: 0,
+    totalQuestsCompleted: 0,
+    currentStreak: 0,
+    longestStreak: 0,
+    joinDate: new Date().toISOString(),
+    lastActiveDate: new Date().toISOString(),
+    achievements: []
+  });
+  const [useEnhancedSystem, setUseEnhancedSystem] = useState(true); // Toggle for migration
+  const questManager = QuestManager;
 
   // Load from localStorage
   useEffect(() => {
@@ -46,10 +49,7 @@ const Index = () => {
 
     if (saved) {
       const data = JSON.parse(saved);
-      setQuests(data.quests || INITIAL_QUESTS);
       setProgress(data.progress || progress);
-    } else {
-      setQuests(INITIAL_QUESTS);
     }
 
     if (savedCelebration) {
@@ -59,12 +59,75 @@ const Index = () => {
         setHasCelebratedToday(celebrationData.celebrated);
       }
     }
+
+    // Load username and avatar from profile
+    const savedProfile = localStorage.getItem(PROFILE_KEY);
+    if (savedProfile) {
+      const profileData = JSON.parse(savedProfile);
+      setUsername(profileData.username || "Aventurier");
+      setAvatar(profileData.avatar || "default");
+      setProfile(prev => ({
+        ...prev,
+        ...profileData
+      }));
+      setProgress(prev => ({
+        ...prev,
+        currentLevel: profileData.currentLevel || prev.currentLevel,
+        currentXP: profileData.currentXP || prev.currentXP,
+        xpToNextLevel: profileData.xpToNextLevel || prev.xpToNextLevel
+      }));
+    }
+
+    // Check if we should migrate existing quests
+    if (saved && !localStorage.getItem('enhanced-daily-quests')) {
+      try {
+        const oldQuests = JSON.parse(saved);
+        if (oldQuests.quests && Array.isArray(oldQuests.quests)) {
+          questManager.migrateExistingQuests(oldQuests.quests);
+        }
+      } catch (error) {
+        console.error('Error migrating quests:', error);
+      }
+    }
   }, []);
 
-  // Save to localStorage
+  const handleProgressUpdate = (xpGained: number, newLevel?: number) => {
+    setProgress(prev => {
+      const newXP = prev.currentXP + xpGained;
+      let newCurrentLevel = prev.currentLevel;
+      let remainingXP = newXP;
+      let nextLevelXP = prev.xpToNextLevel;
+
+      // Level up logic
+      while (remainingXP >= nextLevelXP) {
+        remainingXP -= nextLevelXP;
+        newCurrentLevel++;
+        nextLevelXP = newCurrentLevel * 100;
+      }
+
+      // Update profile
+      setProfile(prev => ({
+        ...prev,
+        currentLevel: newCurrentLevel,
+        currentXP: remainingXP,
+        xpToNextLevel: nextLevelXP,
+        totalXP: prev.totalXP + xpGained,
+        questsCompleted: prev.questsCompleted + (xpGained > 0 ? 1 : 0),
+        lastActiveDate: new Date().toISOString()
+      }));
+
+      return {
+        currentLevel: newCurrentLevel,
+        currentXP: remainingXP,
+        xpToNextLevel: nextLevelXP
+      };
+    });
+  };
+
+  // Save profile to localStorage
   useEffect(() => {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify({ quests, progress }));
-  }, [quests, progress]);
+    localStorage.setItem(PROFILE_KEY, JSON.stringify(profile));
+  }, [profile]);
 
   // Save celebration state to localStorage
   useEffect(() => {
@@ -77,97 +140,9 @@ const Index = () => {
     );
   }, [hasCelebratedToday]);
 
-  // Check if all quests are completed and trigger celebration
-  useEffect(() => {
-    const allQuestsCompleted = quests.length > 0 && quests.every(q => q.completed);
-    if (allQuestsCompleted && !hasCelebratedToday) {
-      setShowCelebration(true);
-      setHasCelebratedToday(true);
-
-      // Add bonus XP for completing all quests
-      setProgress((p) => {
-        const bonusXP = 100;
-        const newXP = p.currentXP + bonusXP;
-        let newLevel = p.currentLevel;
-        let remainingXP = newXP;
-        let nextLevelXP = p.xpToNextLevel;
-
-        while (remainingXP >= nextLevelXP) {
-          remainingXP -= nextLevelXP;
-          newLevel++;
-          nextLevelXP = newLevel * 100;
-
-          toast.success(`🎉 Niveau ${newLevel} atteint !`, {
-            description: "Bonus de 100 XP pour avoir complété toutes les quêtes !",
-          });
-        }
-
-        return {
-          currentLevel: newLevel,
-          currentXP: remainingXP,
-          xpToNextLevel: nextLevelXP,
-        };
-      });
-    }
-  }, [quests, hasCelebratedToday]);
-
   const handleCelebrationComplete = () => {
     setShowCelebration(false);
   };
-
-  const handleToggleQuest = (id: string) => {
-    setQuests((prev) => {
-      const updated = prev.map((q) => {
-        if (q.id === id) {
-          const newCompleted = !q.completed;
-          
-          // Update XP
-          if (newCompleted) {
-            setProgress((p) => {
-              const newXP = p.currentXP + q.xp;
-              let newLevel = p.currentLevel;
-              let remainingXP = newXP;
-              let nextLevelXP = p.xpToNextLevel;
-
-              // Level up logic
-              while (remainingXP >= nextLevelXP) {
-                remainingXP -= nextLevelXP;
-                newLevel++;
-                nextLevelXP = newLevel * 100; // Each level requires more XP
-                
-                toast.success(`🎉 Niveau ${newLevel} atteint !`, {
-                  description: `Continue comme ça, champion !`,
-                });
-              }
-
-              toast.success(`+${q.xp} XP !`, {
-                description: q.title,
-              });
-
-              return {
-                currentLevel: newLevel,
-                currentXP: remainingXP,
-                xpToNextLevel: nextLevelXP,
-              };
-            });
-          } else {
-            setProgress((p) => ({
-              ...p,
-              currentXP: Math.max(0, p.currentXP - q.xp),
-            }));
-          }
-
-          return { ...q, completed: newCompleted };
-        }
-        return q;
-      });
-      return updated;
-    });
-  };
-
-  const level1Quests = quests.filter(q => q.level === 1);
-  const level2Quests = quests.filter(q => q.level === 2);
-  const level3Quests = quests.filter(q => q.level === 3);
 
   return (
     <div className="min-h-screen bg-background">
@@ -182,7 +157,7 @@ const Index = () => {
               </h1>
             </div>
             <p className="text-muted-foreground">
-              Complète tes quêtes et gagne de l'XP pour monter de niveau !
+              Bonjour {username} ! Complète tes quêtes et gagne de l'XP pour monter de niveau !
             </p>
           </div>
 
@@ -193,32 +168,46 @@ const Index = () => {
             onClick={() => navigate("/profile")}
             className="h-12 w-12 rounded-full border-2 border-primary/20 hover:border-primary/40 hover:bg-primary/10 transition-all duration-300"
           >
-            <User className="h-6 w-6 text-primary" />
+            <span className="text-2xl">{getAvatarEmoji(avatar)}</span>
           </Button>
         </div>
 
         {/* Progress */}
         <ProgressBar progress={progress} />
 
-        {/* Quests by Level */}
-        <div className="space-y-8">
-          <LevelSection
-            level={1}
-            quests={level1Quests}
-            onToggleQuest={handleToggleQuest}
-          />
-          
-          <LevelSection
-            level={2}
-            quests={level2Quests}
-            onToggleQuest={handleToggleQuest}
-          />
-          
-          <LevelSection
-            level={3}
-            quests={level3Quests}
-            onToggleQuest={handleToggleQuest}
-          />
+        {/* Enhanced Quest System */}
+        <div className="space-y-6">
+          <div className="flex items-center justify-between">
+            <h2 className="text-2xl font-bold">Quêtes Multi-Granularité</h2>
+            <div className="flex items-center gap-2">
+              <Button
+                variant={useEnhancedSystem ? "default" : "outline"}
+                size="sm"
+                onClick={() => setUseEnhancedSystem(true)}
+              >
+                Nouveau système
+              </Button>
+              <Button
+                variant={!useEnhancedSystem ? "default" : "outline"}
+                size="sm"
+                onClick={() => setUseEnhancedSystem(false)}
+              >
+                Ancien système
+              </Button>
+            </div>
+          </div>
+
+          {useEnhancedSystem ? (
+            <EnhancedQuestView
+              profile={profile}
+              onProgressUpdate={handleProgressUpdate}
+            />
+          ) : (
+            <div className="text-center py-8 text-muted-foreground">
+              <p>Ancien système désactivé</p>
+              <p className="text-sm">Utilisez le nouveau système multi-granularité</p>
+            </div>
+          )}
         </div>
       </div>
 

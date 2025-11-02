@@ -17,6 +17,7 @@ import {
   ChevronRight
 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
+import { ProfileEditor, getAvatarEmoji } from "@/components/ProfileEditor";
 
 const INITIAL_ACHIEVEMENTS: Achievement[] = [
   {
@@ -106,6 +107,10 @@ const Profile = () => {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(profile));
   }, [profile]);
 
+  const handleProfileUpdate = (updatedProfile: UserProfile) => {
+    setProfile(updatedProfile);
+  };
+
   // Sync with quest progress from main page
   useEffect(() => {
     const questData = localStorage.getItem("daily-quests");
@@ -172,8 +177,10 @@ const Profile = () => {
           <div className="absolute inset-0 bg-gradient-to-br from-blue-500 via-purple-600 to-pink-600 opacity-10" />
           <CardHeader className="relative">
             <div className="flex items-center gap-4">
-              <div className="flex items-center justify-center h-16 w-16 rounded-full bg-gradient-to-br from-blue-500 to-purple-600">
-                <User className="h-8 w-8 text-white" />
+              <div className="flex items-center justify-center h-16 w-16 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 shadow-lg">
+                <span className="text-3xl">
+                  {getAvatarEmoji(profile.avatar)}
+                </span>
               </div>
               <div className="flex-1">
                 <CardTitle className="text-2xl">{profile.username}</CardTitle>
@@ -190,6 +197,21 @@ const Profile = () => {
           </CardHeader>
 
           <CardContent className="relative space-y-6">
+            {/* Bio Section */}
+            {profile.bio && (
+              <div className="p-4 bg-gradient-to-r from-blue-50 to-purple-50 rounded-lg border border-blue-100">
+                <p className="text-sm text-gray-700 italic">"{profile.bio}"</p>
+              </div>
+            )}
+
+            {/* Profile Actions */}
+            <div className="flex justify-end">
+              <ProfileEditor
+                profile={profile}
+                onProfileUpdate={handleProfileUpdate}
+              />
+            </div>
+
             {/* Level Progress */}
             <div className="space-y-2">
               <div className="flex items-center justify-between text-sm">

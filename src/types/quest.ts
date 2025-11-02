@@ -14,6 +14,8 @@ export interface PlayerProgress {
 
 export interface UserProfile {
   username: string;
+  bio?: string;
+  avatar?: string;
   totalXP: number;
   currentLevel: number;
   currentXP: number;
