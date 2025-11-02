@@ -6,7 +6,7 @@ import { UserConfig, QuestConfig } from './userManager';
  */
 
 export class ApiService {
-  private static readonly API_BASE = '/api/blob';
+  private static readonly API_BASE = '/api';
 
   /**
    * Get users from API (server-side Blob Store access)
