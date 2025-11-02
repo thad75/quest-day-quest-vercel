@@ -23,7 +23,11 @@ export class EdgeConfigManager {
       // Ne pas muter la valeur retournée - cloner si nécessaire
       return clone(users) || {};
     } catch (error) {
-      console.log('Edge Config non disponible ou erreur:', error.message);
+      if (error.message.includes('No connection string provided')) {
+        console.log('⚠️ EDGE_CONFIG non configuré sur Vercel. Voir EDGE_CONFIG_USAGE.md');
+      } else {
+        console.log('Edge Config non disponible ou erreur:', error.message);
+      }
       return {};
     }
   }
