@@ -2,8 +2,11 @@ import { useState, useEffect } from "react";
 import { Quest, PlayerProgress } from "@/types/quest";
 import { LevelSection } from "@/components/LevelSection";
 import { ProgressBar } from "@/components/ProgressBar";
+import { CelebrationAnimation } from "@/components/CelebrationAnimation";
+import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
-import { Gamepad2 } from "lucide-react";
+import { Gamepad2, User } from "lucide-react";
+import { useNavigate } from "react-router-dom";
 
 const INITIAL_QUESTS: Quest[] = [
   // Niveau 1
@@ -23,18 +26,24 @@ const INITIAL_QUESTS: Quest[] = [
 ];
 
 const STORAGE_KEY = "daily-quests";
+const CELEBRATION_KEY = "daily-celebration";
 
 const Index = () => {
+  const navigate = useNavigate();
   const [quests, setQuests] = useState<Quest[]>([]);
   const [progress, setProgress] = useState<PlayerProgress>({
     currentLevel: 1,
     currentXP: 0,
     xpToNextLevel: 100,
   });
+  const [showCelebration, setShowCelebration] = useState(false);
+  const [hasCelebratedToday, setHasCelebratedToday] = useState(false);
 
   // Load from localStorage
   useEffect(() => {
     const saved = localStorage.getItem(STORAGE_KEY);
+    const savedCelebration = localStorage.getItem(CELEBRATION_KEY);
+
     if (saved) {
       const data = JSON.parse(saved);
       setQuests(data.quests || INITIAL_QUESTS);
@@ -42,12 +51,69 @@ const Index = () => {
     } else {
       setQuests(INITIAL_QUESTS);
     }
+
+    if (savedCelebration) {
+      const celebrationData = JSON.parse(savedCelebration);
+      const today = new Date().toDateString();
+      if (celebrationData.date === today) {
+        setHasCelebratedToday(celebrationData.celebrated);
+      }
+    }
   }, []);
 
   // Save to localStorage
   useEffect(() => {
     localStorage.setItem(STORAGE_KEY, JSON.stringify({ quests, progress }));
   }, [quests, progress]);
+
+  // Save celebration state to localStorage
+  useEffect(() => {
+    localStorage.setItem(
+      CELEBRATION_KEY,
+      JSON.stringify({
+        date: new Date().toDateString(),
+        celebrated: hasCelebratedToday,
+      })
+    );
+  }, [hasCelebratedToday]);
+
+  // Check if all quests are completed and trigger celebration
+  useEffect(() => {
+    const allQuestsCompleted = quests.length > 0 && quests.every(q => q.completed);
+    if (allQuestsCompleted && !hasCelebratedToday) {
+      setShowCelebration(true);
+      setHasCelebratedToday(true);
+
+      // Add bonus XP for completing all quests
+      setProgress((p) => {
+        const bonusXP = 100;
+        const newXP = p.currentXP + bonusXP;
+        let newLevel = p.currentLevel;
+        let remainingXP = newXP;
+        let nextLevelXP = p.xpToNextLevel;
+
+        while (remainingXP >= nextLevelXP) {
+          remainingXP -= nextLevelXP;
+          newLevel++;
+          nextLevelXP = newLevel * 100;
+
+          toast.success(`🎉 Niveau ${newLevel} atteint !`, {
+            description: "Bonus de 100 XP pour avoir complété toutes les quêtes !",
+          });
+        }
+
+        return {
+          currentLevel: newLevel,
+          currentXP: remainingXP,
+          xpToNextLevel: nextLevelXP,
+        };
+      });
+    }
+  }, [quests, hasCelebratedToday]);
+
+  const handleCelebrationComplete = () => {
+    setShowCelebration(false);
+  };
 
   const handleToggleQuest = (id: string) => {
     setQuests((prev) => {
@@ -107,16 +173,28 @@ const Index = () => {
     <div className="min-h-screen bg-background">
       <div className="container max-w-4xl mx-auto p-6 space-y-8">
         {/* Header */}
-        <div className="text-center space-y-2 pt-8">
-          <div className="flex items-center justify-center gap-3 mb-4">
-            <Gamepad2 className="h-10 w-10 text-primary" />
-            <h1 className="text-4xl font-bold bg-[var(--gradient-level)] bg-clip-text text-transparent">
-              Quêtes Quotidiennes
-            </h1>
+        <div className="flex items-center justify-between pt-8">
+          <div className="text-center flex-1 space-y-2">
+            <div className="flex items-center justify-center gap-3 mb-4">
+              <Gamepad2 className="h-10 w-10 text-primary" />
+              <h1 className="text-4xl font-bold bg-[var(--gradient-level)] bg-clip-text text-transparent">
+                Quêtes Quotidiennes
+              </h1>
+            </div>
+            <p className="text-muted-foreground">
+              Complète tes quêtes et gagne de l'XP pour monter de niveau !
+            </p>
           </div>
-          <p className="text-muted-foreground">
-            Complète tes quêtes et gagne de l'XP pour monter de niveau !
-          </p>
+
+          {/* Profile Button */}
+          <Button
+            variant="outline"
+            size="icon"
+            onClick={() => navigate("/profile")}
+            className="h-12 w-12 rounded-full border-2 border-primary/20 hover:border-primary/40 hover:bg-primary/10 transition-all duration-300"
+          >
+            <User className="h-6 w-6 text-primary" />
+          </Button>
         </div>
 
         {/* Progress */}
@@ -143,6 +221,12 @@ const Index = () => {
           />
         </div>
       </div>
+
+      {/* Celebration Animation */}
+      <CelebrationAnimation
+        isVisible={showCelebration}
+        onComplete={handleCelebrationComplete}
+      />
     </div>
   );
 };

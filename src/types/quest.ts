@@ -11,3 +11,28 @@ export interface PlayerProgress {
   currentXP: number;
   xpToNextLevel: number;
 }
+
+export interface UserProfile {
+  username: string;
+  totalXP: number;
+  currentLevel: number;
+  currentXP: number;
+  xpToNextLevel: number;
+  questsCompleted: number;
+  totalQuestsCompleted: number;
+  currentStreak: number;
+  longestStreak: number;
+  joinDate: string;
+  lastActiveDate: string;
+  achievements: Achievement[];
+}
+
+export interface Achievement {
+  id: string;
+  title: string;
+  description: string;
+  icon: string;
+  unlockedAt?: string;
+  isUnlocked: boolean;
+  category: 'level' | 'streak' | 'quest' | 'special';
+}
