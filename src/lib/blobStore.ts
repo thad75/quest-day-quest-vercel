@@ -35,9 +35,10 @@ export class BlobStoreManager {
   private errorHistory: BlobStoreError[] = [];
 
   constructor() {
-    this.blobToken = process.env.BLOB_READ_WRITE_TOKEN || '';
-    this.primaryPath = process.env.BLOB_STORE_PRIMARY_PATH || 'quest-app/data/main-config.json';
-    this.backupPath = process.env.BLOB_STORE_BACKUP_PATH || 'quest-app/backups/';
+    // Use Vite-compatible environment variable for browser access, fallback to server-side variable
+    this.blobToken = import.meta.env.VITE_BLOB_READ_WRITE_TOKEN || process.env.BLOB_READ_WRITE_TOKEN || '';
+    this.primaryPath = import.meta.env.VITE_BLOB_STORE_PRIMARY_PATH || process.env.BLOB_STORE_PRIMARY_PATH || 'quest-app/data/main-config.json';
+    this.backupPath = import.meta.env.VITE_BLOB_STORE_BACKUP_PATH || process.env.BLOB_STORE_BACKUP_PATH || 'quest-app/backups/';
 
     this.metrics = {
       totalOperations: 0,

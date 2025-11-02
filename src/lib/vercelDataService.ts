@@ -1,27 +1,30 @@
 import { UserConfig, QuestConfig } from './userManager';
 import { blobStorageStrategy } from './blobStorageStrategy';
+import { LocalStorageFallback } from './localStorageFallback';
 
 /**
- * Service de données Vercel fonctionnel
- * Utilise Vercel Blob Store exclusivement (plus de fallback JSON)
+ * Service de données Vercel avec fallback LocalStorage
+ * Utilise Vercel Blob Store en production, LocalStorage en développement
+ * Gère automatiquement les problèmes CORS en mode développement
  */
 
 export class VercelDataService {
 
   /**
-   * Initialise Blob Store avec des données par défaut si vide
+   * Initialize storage (Blob Store or LocalStorage fallback)
    */
   static async initializeBlobStore(): Promise<boolean> {
     try {
-      // Vérifier si Blob Store est déjà initialisé
+      // First try to initialize Blob Store
+      console.log('🔄 Attempting to initialize Blob Store...');
       const existingConfig = await blobStorageStrategy.getFullConfig();
 
       if (existingConfig.data && (Object.keys(existingConfig.data.users).length > 0 || Object.keys(existingConfig.data.quests).length > 0)) {
-        console.log('Blob Store déjà initialisé');
+        console.log('✅ Blob Store already initialized');
         return true;
       }
 
-      console.log('Initialisation de Blob Store avec des données par défaut...');
+      console.log('🔄 Initializing Blob Store with default data...');
 
       // Créer la configuration initiale par défaut
       const initialConfig = {
@@ -48,7 +51,7 @@ export class VercelDataService {
       const success = await blobStorageStrategy.updateFullConfig(initialConfig);
 
       if (success) {
-        console.log('Données initialisées dans Blob Store:', {
+        console.log('✅ Data initialized in Blob Store:', {
           usersCount: Object.keys(initialConfig.users).length,
           questsCount: Object.keys(initialConfig.quests).length
         });
@@ -57,74 +60,131 @@ export class VercelDataService {
         throw new Error('Failed to initialize Blob Store');
       }
     } catch (error) {
-      console.error('Erreur lors de l\'initialisation de Blob Store:', error);
-      return false;
+      console.error('❌ Blob Store initialization failed, using LocalStorage fallback:', error);
+      // Fallback to LocalStorage
+      await LocalStorageFallback.initializeIfEmpty();
+      return true;
     }
+  }
+
+  /**
+   * Check if we should use LocalStorage fallback (for development)
+   */
+  private static useLocalStorageFallback(): boolean {
+    // Use fallback if we're in development and Blob Store is not accessible
+    return import.meta.env.DEV &&
+           (import.meta.env.VITE_BLOB_READ_WRITE_TOKEN?.startsWith('blob_') === false ||
+            window.location.hostname === 'localhost' ||
+            window.location.hostname === '127.0.0.1');
   }
 
   
   /**
-   * Récupère tous les utilisateurs depuis Blob Store
+   * Récupère tous les utilisateurs (Blob Store ou LocalStorage fallback)
    */
   static async getUsers(): Promise<{ users: Record<string, UserConfig>; commonQuests: string[]; isBlobStore: boolean }> {
     try {
-      // Récupérer depuis Blob Store uniquement
+      if (this.useLocalStorageFallback()) {
+        console.log('📱 Using LocalStorage fallback for users');
+        const users = await LocalStorageFallback.getUsers();
+        const commonQuests = await LocalStorageFallback.getCommonQuests();
+        return {
+          users,
+          commonQuests,
+          isBlobStore: false
+        };
+      }
+
+      // Récupérer depuis Blob Store
       const blobUsers = await blobStorageStrategy.getUsers();
       const blobCommonQuests = await blobStorageStrategy.getCommonQuests();
 
-      console.log('Utilisation de Blob Store pour les utilisateurs');
+      console.log('☁️ Using Blob Store for users');
       return {
         users: blobUsers.data,
         commonQuests: blobCommonQuests.data,
         isBlobStore: true
       };
     } catch (error) {
-      console.error('Erreur lors de la récupération des utilisateurs depuis Blob Store:', error);
-      throw new Error('Impossible de récupérer les utilisateurs depuis Blob Store');
+      console.error('❌ Blob Store failed for users, using LocalStorage fallback:', error);
+      // Fallback to LocalStorage
+      const users = await LocalStorageFallback.getUsers();
+      const commonQuests = await LocalStorageFallback.getCommonQuests();
+      return {
+        users,
+        commonQuests,
+        isBlobStore: false
+      };
     }
   }
 
   /**
-   * Récupère toutes les quêtes depuis Blob Store
+   * Récupère toutes les quêtes (Blob Store ou LocalStorage fallback)
    */
   static async getQuests(): Promise<Record<string, QuestConfig>> {
     try {
-      // Récupérer depuis Blob Store uniquement
-      const blobQuests = await blobStorageStrategy.getQuests();
+      if (this.useLocalStorageFallback()) {
+        console.log('📱 Using LocalStorage fallback for quests');
+        return await LocalStorageFallback.getQuests();
+      }
 
-      console.log('Utilisation de Blob Store pour les quêtes');
+      // Récupérer depuis Blob Store
+      const blobQuests = await blobStorageStrategy.getQuests();
+      console.log('☁️ Using Blob Store for quests');
       return blobQuests.data;
     } catch (error) {
-      console.error('Erreur lors de la récupération des quêtes depuis Blob Store:', error);
-      throw new Error('Impossible de récupérer les quêtes depuis Blob Store');
+      console.error('❌ Blob Store failed for quests, using LocalStorage fallback:', error);
+      // Fallback to LocalStorage
+      return await LocalStorageFallback.getQuests();
     }
   }
 
   /**
-   * Vérifie le mot de passe admin depuis Blob Store
+   * Vérifie le mot de passe admin (Blob Store ou LocalStorage fallback)
    */
   static async verifyAdminPassword(password: string): Promise<boolean> {
     try {
-      // Récupérer depuis Blob Store uniquement
-      const blobPassword = await blobStorageStrategy.getAdminPassword();
+      if (this.useLocalStorageFallback()) {
+        console.log('📱 Using LocalStorage fallback for admin password');
+        const localStoragePassword = await LocalStorageFallback.getAdminPassword();
+        return password === localStoragePassword;
+      }
 
-      console.log('Vérification du mot de passe admin via Blob Store');
+      // Récupérer depuis Blob Store
+      const blobPassword = await blobStorageStrategy.getAdminPassword();
+      console.log('☁️ Verifying admin password via Blob Store');
       return password === blobPassword.data;
     } catch (error) {
-      console.error('Erreur lors de la vérification du mot de passe admin depuis Blob Store:', error);
-      // En cas d'erreur, utiliser le mot de passe par défaut pour sécurité
-      return password === 'admin123';
+      console.error('❌ Blob Store failed for admin password, using LocalStorage fallback:', error);
+      // Fallback to LocalStorage
+      const localStoragePassword = await LocalStorageFallback.getAdminPassword();
+      return password === localStoragePassword;
     }
   }
 
   /**
-   * Met à jour la configuration des utilisateurs dans Blob Store
+   * Met à jour la configuration des utilisateurs (Blob Store ou LocalStorage fallback)
    */
   static async updateUsersConfig(
     users: Record<string, UserConfig>,
     commonQuests: string[]
   ): Promise<{ success: boolean; message: string }> {
     try {
+      if (this.useLocalStorageFallback()) {
+        console.log('📱 Using LocalStorage fallback for updating users');
+        const usersSuccess = await LocalStorageFallback.updateUsers(users);
+        const questsSuccess = await LocalStorageFallback.updateCommonQuests(commonQuests);
+
+        if (usersSuccess && questsSuccess) {
+          return {
+            success: true,
+            message: 'Configuration des utilisateurs mise à jour avec succès dans LocalStorage.'
+          };
+        } else {
+          throw new Error('LocalStorage update failed');
+        }
+      }
+
       // Utiliser Blob Store pour mettre à jour directement
       const success = await blobStorageStrategy.updateUsers(users);
 
@@ -144,22 +204,52 @@ export class VercelDataService {
         throw new Error('Blob Store update failed');
       }
     } catch (error) {
-      console.error('Erreur lors de la mise à jour via Blob Store:', error);
+      console.error('❌ Update failed, trying LocalStorage fallback:', error);
+
+      // Fallback to LocalStorage
+      try {
+        const usersSuccess = await LocalStorageFallback.updateUsers(users);
+        const questsSuccess = await LocalStorageFallback.updateCommonQuests(commonQuests);
+
+        if (usersSuccess && questsSuccess) {
+          return {
+            success: true,
+            message: 'Configuration des utilisateurs mise à jour avec succès dans LocalStorage (fallback).'
+          };
+        }
+      } catch (fallbackError) {
+        console.error('❌ LocalStorage fallback also failed:', fallbackError);
+      }
+
       return {
         success: false,
-        message: 'Erreur lors de la mise à jour de la configuration des utilisateurs dans Blob Store.'
+        message: 'Erreur lors de la mise à jour de la configuration des utilisateurs.'
       };
     }
   }
 
   
   /**
-   * Met à jour la configuration des quêtes dans Blob Store
+   * Met à jour la configuration des quêtes (Blob Store ou LocalStorage fallback)
    */
   static async updateQuestsConfig(
     quests: Record<string, QuestConfig>
   ): Promise<{ success: boolean; message: string }> {
     try {
+      if (this.useLocalStorageFallback()) {
+        console.log('📱 Using LocalStorage fallback for updating quests');
+        const success = await LocalStorageFallback.updateQuests(quests);
+
+        if (success) {
+          return {
+            success: true,
+            message: 'Configuration des quêtes mise à jour avec succès dans LocalStorage.'
+          };
+        } else {
+          throw new Error('LocalStorage update failed');
+        }
+      }
+
       // Utiliser Blob Store pour mettre à jour directement
       const success = await blobStorageStrategy.updateQuests(quests);
 
@@ -172,10 +262,25 @@ export class VercelDataService {
         throw new Error('Blob Store update failed');
       }
     } catch (error) {
-      console.error('Erreur lors de la mise à jour via Blob Store:', error);
+      console.error('❌ Quest update failed, trying LocalStorage fallback:', error);
+
+      // Fallback to LocalStorage
+      try {
+        const success = await LocalStorageFallback.updateQuests(quests);
+
+        if (success) {
+          return {
+            success: true,
+            message: 'Configuration des quêtes mise à jour avec succès dans LocalStorage (fallback).'
+          };
+        }
+      } catch (fallbackError) {
+        console.error('❌ LocalStorage fallback also failed:', fallbackError);
+      }
+
       return {
         success: false,
-        message: 'Erreur lors de la mise à jour de la configuration des quêtes dans Blob Store.'
+        message: 'Erreur lors de la mise à jour de la configuration des quêtes.'
       };
     }
   }

@@ -211,6 +211,39 @@ const Admin = () => {
     }
   };
 
+  const handleSaveUsers = async () => {
+    if (!selectedUser) return;
+
+    setIsLoading(true);
+    try {
+      // Update the user in the users array
+      const updatedUsers = users.map(user =>
+        user.id === selectedUser.id ? selectedUser : user
+      );
+      setUsers(updatedUsers);
+
+      toast.success('Modifications utilisateur sauvegardées');
+    } catch (error) {
+      console.error('Error saving user:', error);
+      toast.error('Erreur lors de la sauvegarde de l\'utilisateur');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleExportFullConfig = async () => {
+    setIsLoading(true);
+    try {
+      await handleSaveChanges();
+      toast.success('Configuration complète exportée avec succès');
+    } catch (error) {
+      console.error('Error exporting full config:', error);
+      toast.error('Erreur lors de l\'export de la configuration');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   if (!isAuthenticated) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-background via-background to-background/95 flex items-center justify-center p-6">
@@ -276,6 +309,17 @@ const Admin = () => {
                   </>
                 )}
               </div>
+
+              {/* Test Blob Store button */}
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => window.open('/test-blob', '_blank')}
+                className="text-xs"
+              >
+                <Database className="h-3 w-3 mr-1" />
+                Test
+              </Button>
 
               <Button
                 onClick={handleSaveChanges}
