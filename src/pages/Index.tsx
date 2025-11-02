@@ -10,6 +10,7 @@ import { useNavigate } from "react-router-dom";
 import { getAvatarEmoji } from "@/components/ProfileEditor";
 import QuestManager from "@/lib/quest-manager";
 import { userManager, UserConfig } from "@/lib/userManager";
+import { ApiService } from "@/lib/apiService";
 
 const STORAGE_KEY = "daily-quests"; // Legacy storage key for migration
 const CELEBRATION_KEY = "daily-celebration";
@@ -40,6 +41,7 @@ const Index = () => {
     achievements: []
   });
   const [useEnhancedSystem, setUseEnhancedSystem] = useState(true);
+  const [isApiAvailable, setIsApiAvailable] = useState(false);
   const questManager = QuestManager;
 
   // Load current user and initialize data
@@ -54,14 +56,43 @@ const Index = () => {
           if (user) {
             setCurrentUser(user);
 
-            // Convert user config to profile and progress
-            const userProfile = userManager.convertToUserProfile(user);
-            const userProgress = userManager.convertToPlayerProgress(user);
+            // Check API availability and sync user data
+            try {
+              const configResponse = await ApiService.getConfig();
+              if (configResponse.success) {
+                setIsApiAvailable(true);
 
-            setProfile(userProfile);
-            setProgress(userProgress);
-            setUsername(user.name);
-            setAvatar(user.avatar);
+                // Sync user data with API if available
+                const apiUsers = configResponse.data?.users || {};
+                if (apiUsers[user.id]) {
+                  const syncedUser = { ...user, ...apiUsers[user.id] };
+                  userManager.setCurrentUser(user.id);
+                  setCurrentUser(syncedUser);
+
+                  const userProfile = userManager.convertToUserProfile(syncedUser);
+                  const userProgress = userManager.convertToPlayerProgress(syncedUser);
+
+                  setProfile(userProfile);
+                  setProgress(userProgress);
+                  setUsername(syncedUser.name);
+                  setAvatar(syncedUser.avatar);
+                }
+              }
+            } catch (apiError) {
+              console.log('API not available, using local data');
+              setIsApiAvailable(false);
+            }
+
+            // Convert user config to profile and progress (fallback)
+            if (!currentUser) {
+              const userProfile = userManager.convertToUserProfile(user);
+              const userProgress = userManager.convertToPlayerProgress(user);
+
+              setProfile(userProfile);
+              setProgress(userProgress);
+              setUsername(user.name);
+              setAvatar(user.avatar);
+            }
           }
         } else {
           // Redirect to login if no user is found

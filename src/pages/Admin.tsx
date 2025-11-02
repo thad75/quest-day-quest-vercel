@@ -9,66 +9,62 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { toast } from 'sonner';
 import { userManager, UserConfig, QuestConfig } from '@/lib/userManager';
-import { ConfigManager } from '@/lib/configManager';
-import { LiveConfigManager } from '@/lib/liveConfigManager';
-import { Gamepad2, Users, Settings, LogOut, Save, Plus, Trash2, Edit, Download, Upload, FileText, Database, CheckCircle, AlertCircle, Copy } from 'lucide-react';
+import { ApiService } from '@/lib/apiService';
+import { Gamepad2, Users, Settings, LogOut, Save, Plus, Trash2, Edit, Download, Upload, FileText, Database, CheckCircle, AlertCircle, Copy, Cloud, Server } from 'lucide-react';
 
 const Admin = () => {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [password, setPassword] = useState('');
   const [users, setUsers] = useState<UserConfig[]>([]);
   const [quests, setQuests] = useState<QuestConfig[]>([]);
+  const [commonQuests, setCommonQuests] = useState<string[]>([]);
   const [selectedUser, setSelectedUser] = useState<UserConfig | null>(null);
   const [editingMode, setEditingMode] = useState<'user' | 'quest' | null>(null);
-
-  // États pour la sauvegarde en direct
-  const [saveResult, setSaveResult] = useState<{
-    users: { success: boolean; json: string; message: string } | null;
-    quests: { success: boolean; json: string; message: string } | null;
-    instructions: string[] | null;
-  } | null>(null);
-  const [showLiveSave, setShowLiveSave] = useState(false);
-  const [lastSaveTime, setLastSaveTime] = useState<string | null>(null);
-  const [unsavedChanges, setUnsavedChanges] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
+  const [isEdgeConfigAvailable, setIsEdgeConfigAvailable] = useState(false);
 
   const navigate = useNavigate();
 
   useEffect(() => {
-    const initializeAdmin = async () => {
-      try {
-        await userManager.loadConfigs();
+    const loadData = async () => {
+      if (!isAuthenticated) return;
 
-        // Essayer de charger depuis localStorage d'abord
-        const liveData = LiveConfigManager.loadFromLocalStorage();
-        if (liveData.hasData) {
-          setUsers(liveData.users);
-          setQuests(liveData.quests);
-          setLastSaveTime(LiveConfigManager.getLastSaveTime());
-          toast.info('Configuration locale chargée');
+      setIsLoading(true);
+      try {
+        // Load configuration from API
+        const configResponse = await ApiService.getConfig();
+
+        if (configResponse.success && configResponse.data) {
+          const { users: usersData, quests: questsData, commonQuests: commonData, isEdgeConfigAvailable } = configResponse.data;
+
+          setUsers(Object.values(usersData || {}));
+          setQuests(Object.values(questsData || {}));
+          setCommonQuests(commonData || []);
+          setIsEdgeConfigAvailable(isEdgeConfigAvailable);
+
+          if (configResponse.fallback) {
+            toast.info('Chargement depuis les fichiers locaux (Edge Config non disponible)');
+          } else {
+            toast.success('Configuration chargée depuis Edge Config');
+          }
         } else {
-          setUsers(userManager.getAvailableUsers());
-          setQuests(userManager.getAllQuests());
+          toast.error('Erreur lors du chargement de la configuration');
         }
       } catch (error) {
-        console.error('Erreur lors du chargement:', error);
+        console.error('Error loading data:', error);
         toast.error('Erreur lors du chargement des données');
+      } finally {
+        setIsLoading(false);
       }
     };
 
-    initializeAdmin();
-  }, []);
-
-  // Vérifier les changements non sauvegardés
-  useEffect(() => {
-    if (users.length > 0 || quests.length > 0) {
-      const hasChanges = LiveConfigManager.hasUnsavedChanges(users, quests);
-      setUnsavedChanges(hasChanges);
-    }
-  }, [users, quests]);
+    loadData();
+  }, [isAuthenticated]);
 
   const handleLogin = () => {
     if (userManager.verifyAdminPassword(password)) {
       setIsAuthenticated(true);
+      ApiService.setAdminPassword(password); // Set password for API calls
       toast.success('Connexion administrateur réussie');
     } else {
       toast.error('Mot de passe incorrect');
@@ -81,28 +77,31 @@ const Admin = () => {
     navigate('/login');
   };
 
-  const handleSaveUsers = () => {
-    ConfigManager.exportUsersConfig(users, ['1', '2', '10']); // Quêtes communes par défaut
-    toast.success('Configuration des utilisateurs exportée avec succès');
-  };
+  const handleSaveChanges = async () => {
+    setIsLoading(true);
+    try {
+      const usersRecord = users.reduce((acc, user) => {
+        acc[user.id] = user;
+        return acc;
+      }, {} as Record<string, UserConfig>);
 
-  const handleSaveQuests = () => {
-    ConfigManager.exportQuestsConfig(quests);
-    toast.success('Configuration des quêtes exportée avec succès');
-  };
+      const questsRecord = quests.reduce((acc, quest) => {
+        acc[quest.id] = quest;
+        return acc;
+      }, {} as Record<string, QuestConfig>);
 
-  // Nouvelles fonctions de sauvegarde en direct
-  const handleLiveSave = () => {
-    const result = LiveConfigManager.saveFullConfigLive(users, quests, ['1', '2', '10']);
-    setSaveResult(result);
-    setShowLiveSave(true);
+      const response = await ApiService.updateConfig(usersRecord, questsRecord, commonQuests);
 
-    if (result.users.success && result.quests.success) {
-      setLastSaveTime(new Date().toLocaleTimeString());
-      setUnsavedChanges(false);
-      toast.success('Configuration sauvegardée avec succès !');
-    } else {
+      if (response.success) {
+        toast.success('Configuration sauvegardée avec succès !');
+      } else {
+        toast.error('Erreur lors de la sauvegarde: ' + response.error);
+      }
+    } catch (error) {
+      console.error('Error saving changes:', error);
       toast.error('Erreur lors de la sauvegarde');
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -217,18 +216,49 @@ const Admin = () => {
     toast.success('Nouvelle quête créée');
   };
 
-  const handleDeleteUser = (userId: string) => {
-    setUsers(users.filter(u => u.id !== userId));
-    if (selectedUser?.id === userId) {
-      setSelectedUser(null);
+  const handleDeleteUser = async (userId: string) => {
+    if (!confirm('Êtes-vous sûr de vouloir supprimer cet utilisateur ?')) return;
+
+    setIsLoading(true);
+    try {
+      const response = await ApiService.deleteUser(userId);
+
+      if (response.success) {
+        setUsers(users.filter(u => u.id !== userId));
+        if (selectedUser?.id === userId) {
+          setSelectedUser(null);
+        }
+        toast.success('Utilisateur supprimé avec succès');
+      } else {
+        toast.error('Erreur lors de la suppression: ' + response.error);
+      }
+    } catch (error) {
+      console.error('Error deleting user:', error);
+      toast.error('Erreur lors de la suppression de l\'utilisateur');
+    } finally {
+      setIsLoading(false);
     }
-    setUnsavedChanges(true);
-    toast.success('Utilisateur supprimé - Pensez à sauvegarder !');
   };
 
-  const handleDeleteQuest = (questId: string) => {
-    setQuests(quests.filter(q => q.id !== questId));
-    toast.success('Quête supprimée');
+  const handleDeleteQuest = async (questId: string) => {
+    if (!confirm('Êtes-vous sûr de vouloir supprimer cette quête ?')) return;
+
+    setIsLoading(true);
+    try {
+      const response = await ApiService.deleteQuest(questId);
+
+      if (response.success) {
+        setQuests(quests.filter(q => q.id !== questId));
+        toast.success('Quête supprimée avec succès');
+      } else {
+        toast.error('Erreur lors de la suppression: ' + response.error);
+      }
+    } catch (error) {
+      console.error('Error deleting quest:', error);
+      toast.error('Erreur lors de la suppression de la quête');
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   if (!isAuthenticated) {
@@ -282,16 +312,31 @@ const Admin = () => {
               </div>
             </div>
             <div className="flex items-center gap-2">
-              {unsavedChanges && (
-                <Button
-                  onClick={handleLiveSave}
-                  size="sm"
-                  className="bg-orange-500 hover:bg-orange-600 text-white"
-                >
-                  <Save className="h-4 w-4 mr-1" />
-                  Sauvegarder
-                </Button>
-              )}
+              {/* Status indicator */}
+              <div className="flex items-center gap-2 px-3 py-1 rounded-lg border text-sm">
+                {isEdgeConfigAvailable ? (
+                  <>
+                    <Cloud className="h-4 w-4 text-green-500" />
+                    <span className="text-green-600">Edge Config</span>
+                  </>
+                ) : (
+                  <>
+                    <Server className="h-4 w-4 text-orange-500" />
+                    <span className="text-orange-600">Local Files</span>
+                  </>
+                )}
+              </div>
+
+              <Button
+                onClick={handleSaveChanges}
+                size="sm"
+                disabled={isLoading}
+                className="bg-blue-500 hover:bg-blue-600 text-white"
+              >
+                <Save className="h-4 w-4 mr-1" />
+                {isLoading ? 'Sauvegarde...' : 'Sauvegarder'}
+              </Button>
+
               <Button variant="outline" onClick={handleLogout}>
                 <LogOut className="h-4 w-4 mr-2" />
                 Déconnexion

@@ -6,6 +6,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { toast } from 'sonner';
 import { userManager, UserConfig } from '@/lib/userManager';
+import { ApiService } from '@/lib/apiService';
 import { Gamepad2, Users, LogIn } from 'lucide-react';
 
 const Login = () => {
@@ -19,9 +20,6 @@ const Login = () => {
   useEffect(() => {
     const initializeLogin = async () => {
       try {
-        // Charger les configurations
-        await userManager.loadConfigs();
-
         // Essayer de charger l'utilisateur courant depuis le localStorage
         const hasCurrentUser = await userManager.loadCurrentUserFromStorage();
         if (hasCurrentUser) {
@@ -29,12 +27,26 @@ const Login = () => {
           return;
         }
 
-        // Charger les utilisateurs disponibles
-        const users = userManager.getAvailableUsers();
-        setAvailableUsers(users);
+        // Charger les utilisateurs depuis l'API
+        const usersResponse = await ApiService.getUsers();
 
-        if (users.length === 0) {
-          toast.error('Aucun utilisateur disponible. Contactez l\'administrateur.');
+        if (usersResponse.success && usersResponse.data) {
+          const users = Object.values(usersResponse.data.users || {});
+          setAvailableUsers(users);
+
+          if (users.length === 0) {
+            toast.error('Aucun utilisateur disponible. Contactez l\'administrateur.');
+          }
+
+          if (usersResponse.fallback) {
+            toast.info('Chargement depuis les fichiers locaux');
+          }
+        } else {
+          // Fallback to userManager if API fails
+          await userManager.loadConfigs();
+          const users = userManager.getAvailableUsers();
+          setAvailableUsers(users);
+          toast.info('Chargement depuis le système local');
         }
       } catch (error) {
         console.error('Erreur lors de l\'initialisation:', error);
