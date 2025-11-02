@@ -1,5 +1,6 @@
 import { put, list } from '@vercel/blob';
 
+// Handle GET request
 export async function GET(request) {
   try {
     const blobToken = process.env.BLOB_READ_WRITE_TOKEN;
@@ -58,6 +59,7 @@ export async function GET(request) {
   }
 }
 
+// Handle POST request
 export async function POST(request) {
   try {
     const blobToken = process.env.BLOB_READ_WRITE_TOKEN;
