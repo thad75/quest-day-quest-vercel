@@ -5,10 +5,11 @@ import { CelebrationAnimation } from "@/components/CelebrationAnimation";
 import { EnhancedQuestView } from "@/components/EnhancedQuestView";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
-import { Gamepad2, User, Sparkles, Clock } from "lucide-react";
+import { Gamepad2, User, Sparkles, Clock, LogOut } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { getAvatarEmoji } from "@/components/ProfileEditor";
 import QuestManager from "@/lib/quest-manager";
+import { userManager, UserConfig } from "@/lib/userManager";
 
 const STORAGE_KEY = "daily-quests"; // Legacy storage key for migration
 const CELEBRATION_KEY = "daily-celebration";
@@ -16,6 +17,7 @@ const PROFILE_KEY = "user-profile";
 
 const Index = () => {
   const navigate = useNavigate();
+  const [currentUser, setCurrentUser] = useState<UserConfig | null>(null);
   const [progress, setProgress] = useState<PlayerProgress>({
     currentLevel: 1,
     currentXP: 0,
@@ -23,8 +25,6 @@ const Index = () => {
   });
   const [showCelebration, setShowCelebration] = useState(false);
   const [hasCelebratedToday, setHasCelebratedToday] = useState(false);
-  const [username, setUsername] = useState("Aventurier");
-  const [avatar, setAvatar] = useState("default");
   const [profile, setProfile] = useState<UserProfile>({
     username: "Aventurier",
     totalXP: 0,
@@ -39,8 +39,47 @@ const Index = () => {
     lastActiveDate: new Date().toISOString(),
     achievements: []
   });
-  const [useEnhancedSystem, setUseEnhancedSystem] = useState(true); // Toggle for migration
+  const [useEnhancedSystem, setUseEnhancedSystem] = useState(true);
   const questManager = QuestManager;
+
+  // Load current user and initialize data
+  useEffect(() => {
+    const initializeUser = async () => {
+      try {
+        // Try to load current user from userManager
+        const hasCurrentUser = await userManager.loadCurrentUserFromStorage();
+
+        if (hasCurrentUser) {
+          const user = userManager.getCurrentUser();
+          if (user) {
+            setCurrentUser(user);
+
+            // Convert user config to profile and progress
+            const userProfile = userManager.convertToUserProfile(user);
+            const userProgress = userManager.convertToPlayerProgress(user);
+
+            setProfile(userProfile);
+            setProgress(userProgress);
+            setUsername(user.name);
+            setAvatar(user.avatar);
+          }
+        } else {
+          // Redirect to login if no user is found
+          navigate('/login');
+          return;
+        }
+      } catch (error) {
+        console.error('Error initializing user:', error);
+        toast.error('Erreur lors du chargement de l\'utilisateur');
+        navigate('/login');
+      }
+    };
+
+    initializeUser();
+  }, [navigate]);
+
+  const [username, setUsername] = useState(currentUser?.name || "Aventurier");
+  const [avatar, setAvatar] = useState(currentUser?.avatar || "default");
 
   // Load from localStorage
   useEffect(() => {
@@ -200,15 +239,30 @@ const Index = () => {
                 </div>
               </div>
 
-              {/* Profile Button */}
-              <Button
-                variant="outline"
-                size="lg"
-                onClick={() => navigate("/profile")}
-                className="h-16 w-16 rounded-2xl border-2 border-primary/30 hover:border-primary/60 hover:bg-primary/20 transition-all duration-300 shadow-[var(--shadow-glow)] hover:scale-105"
-              >
-                <span className="text-3xl">{getAvatarEmoji(avatar)}</span>
-              </Button>
+              {/* Profile and Actions */}
+              <div className="flex items-center gap-3">
+                <Button
+                  variant="outline"
+                  size="lg"
+                  onClick={() => navigate("/profile")}
+                  className="h-12 w-12 rounded-2xl border-2 border-primary/30 hover:border-primary/60 hover:bg-primary/20 transition-all duration-300 shadow-[var(--shadow-glow)] hover:scale-105"
+                >
+                  <span className="text-2xl">{getAvatarEmoji(avatar)}</span>
+                </Button>
+                <Button
+                  variant="outline"
+                  size="lg"
+                  onClick={() => {
+                    userManager.logout();
+                    navigate('/login');
+                    toast.info('Déconnexion réussie');
+                  }}
+                  className="h-12 w-12 rounded-2xl border-2 border-muted/30 hover:border-muted/60 hover:bg-muted/20 transition-all duration-300"
+                  title="Se déconnecter"
+                >
+                  <LogOut className="h-5 w-5" />
+                </Button>
+              </div>
             </div>
           </div>
         </header>
