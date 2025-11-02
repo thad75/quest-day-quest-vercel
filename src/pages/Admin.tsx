@@ -10,6 +10,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { toast } from 'sonner';
 import { userManager, UserConfig, QuestConfig } from '@/lib/userManager';
 import { ApiService } from '@/lib/apiService';
+import { ConfigManager } from '@/lib/configManager';
 import { Gamepad2, Users, Settings, LogOut, Save, Plus, Trash2, Edit, Download, Upload, FileText, Database, CheckCircle, AlertCircle, Copy, Cloud, Server } from 'lucide-react';
 
 const Admin = () => {
@@ -113,13 +114,23 @@ const Admin = () => {
     });
   };
 
+  const handleSaveUsers = () => {
+    ConfigManager.exportUsersConfig(users, commonQuests);
+    toast.success('Configuration des utilisateurs exportée avec succès');
+  };
+
+  const handleSaveQuests = () => {
+    ConfigManager.exportQuestsConfig(quests);
+    toast.success('Configuration des quêtes exportée avec succès');
+  };
+
   const handleExportFullConfig = () => {
-    ConfigManager.exportFullConfig(users, quests, ['1', '2', '10']);
+    ConfigManager.exportFullConfig(users, quests, commonQuests);
     toast.success('Configuration complète exportée avec succès');
   };
 
   const handleGenerateBackup = () => {
-    ConfigManager.generateBackup(users, quests, ['1', '2', '10']);
+    ConfigManager.generateBackup(users, quests, commonQuests);
     toast.success('Backup généré avec succès');
   };
 
@@ -541,7 +552,7 @@ const Admin = () => {
               ))}
             </div>
 
-            <Button onClick={handleSaveQuests} className="w-full">
+            <Button onClick={handleExportFullConfig} className="w-full">
               <Save className="h-4 w-4 mr-2" />
               Sauvegarder toutes les quêtes
             </Button>

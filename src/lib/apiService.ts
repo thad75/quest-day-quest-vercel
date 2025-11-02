@@ -2,7 +2,8 @@ import { UserConfig, QuestConfig } from './userManager';
 import { MockApiService } from './mockApiService';
 
 const API_BASE = '/api';
-const USE_MOCK_API = process.env.NODE_ENV === 'development' && !process.env.VITE_API_ENABLED;
+// Toujours utiliser le mock API pour Vite/React (les routes Next.js ne fonctionnent pas)
+const USE_MOCK_API = true;
 
 export interface ApiResponse<T = any> {
   success: boolean;
