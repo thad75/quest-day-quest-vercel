@@ -8,7 +8,12 @@
     "build": "vite build",
     "build:dev": "vite build --mode development",
     "lint": "eslint .",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "setup:blob-store": "node scripts/setup-blob-store-simple.js",
+    "test:blob-store": "node scripts/test-blob-store.js",
+    "backup:create": "node scripts/create-backup.js",
+    "backup:list": "node scripts/list-backups.js",
+    "blob:health": "node scripts/health-check.js"
   },
   "dependencies": {
     "@hookform/resolvers": "^3.10.0",

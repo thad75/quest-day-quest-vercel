@@ -1,17 +1,15 @@
-import { UserConfig, QuestConfig, UsersConfig, QuestsLibrary } from './userManager';
+import { UserConfig, QuestConfig } from './userManager';
 import { blobStorageStrategy } from './blobStorageStrategy';
 
 /**
  * Service de données Vercel fonctionnel
- * Utilise Vercel Blob Store + fallback vers fichiers JSON
+ * Utilise Vercel Blob Store exclusivement (plus de fallback JSON)
  */
 
 export class VercelDataService {
-  private static readonly USERS_CONFIG_URL = '/users-config.json';
-  private static readonly QUESTS_CONFIG_URL = '/quests-library.json';
 
   /**
-   * Initialise Blob Store avec les données actuelles (une seule fois)
+   * Initialise Blob Store avec des données par défaut si vide
    */
   static async initializeBlobStore(): Promise<boolean> {
     try {
@@ -23,75 +21,11 @@ export class VercelDataService {
         return true;
       }
 
-      // Charger les données depuis les fichiers JSON
-      const [usersConfig, questsConfig] = await Promise.all([
-        this.loadUsersConfig(),
-        this.loadQuestsConfig()
-      ]);
+      console.log('Initialisation de Blob Store avec des données par défaut...');
 
-      console.log('Initialisation de Blob Store avec les données existantes...');
-
-      // Créer la configuration initiale dans Blob Store
+      // Créer la configuration initiale par défaut
       const initialConfig = {
-        users: usersConfig.users,
-        quests: questsConfig.quests,
-        commonQuests: usersConfig.commonQuests,
-        adminPassword: usersConfig.adminPassword,
-        lastUpdated: new Date().toISOString(),
-        version: '1.0'
-      };
-
-      const success = await blobStorageStrategy.updateFullConfig(initialConfig);
-
-      if (success) {
-        console.log('Données initialisées dans Blob Store:', {
-          usersCount: Object.keys(usersConfig.users).length,
-          questsCount: Object.keys(questsConfig.quests).length
-        });
-        return true;
-      } else {
-        throw new Error('Failed to initialize Blob Store');
-      }
-    } catch (error) {
-      console.error('Erreur lors de l\'initialisation de Blob Store:', error);
-      return false;
-    }
-  }
-
-  /**
-   * Charge la configuration depuis Edge Config ou fallback vers fichiers JSON
-   */
-  static async loadUsersConfig(): Promise<UsersConfig> {
-    try {
-      const response = await fetch(this.USERS_CONFIG_URL);
-      if (!response.ok) {
-        throw new Error('Failed to load users config');
-      }
-      return await response.json();
-    } catch (error) {
-      console.error('Error loading users config:', error);
-      // Configuration par défaut
-      return {
         users: {},
-        commonQuests: ['1', '2', '10'],
-        adminPassword: 'admin123',
-        lastUpdated: new Date().toISOString(),
-        version: '1.0'
-      };
-    }
-  }
-
-  static async loadQuestsConfig(): Promise<QuestsLibrary> {
-    try {
-      const response = await fetch(this.QUESTS_CONFIG_URL);
-      if (!response.ok) {
-        throw new Error('Failed to load quests config');
-      }
-      return await response.json();
-    } catch (error) {
-      console.error('Error loading quests config:', error);
-      // Configuration par défaut
-      return {
         quests: {
           '1': {
             id: '1',
@@ -105,84 +39,86 @@ export class VercelDataService {
             requirements: []
           }
         },
+        commonQuests: ['1'],
+        adminPassword: 'admin123',
         lastUpdated: new Date().toISOString(),
         version: '1.0'
       };
+
+      const success = await blobStorageStrategy.updateFullConfig(initialConfig);
+
+      if (success) {
+        console.log('Données initialisées dans Blob Store:', {
+          usersCount: Object.keys(initialConfig.users).length,
+          questsCount: Object.keys(initialConfig.quests).length
+        });
+        return true;
+      } else {
+        throw new Error('Failed to initialize Blob Store');
+      }
+    } catch (error) {
+      console.error('Erreur lors de l\'initialisation de Blob Store:', error);
+      return false;
     }
   }
 
+  
   /**
-   * Récupère tous les utilisateurs (Blob Store优先)
+   * Récupère tous les utilisateurs depuis Blob Store
    */
-  static async getUsers(): Promise<{ users: Record<string, UserConfig>; commonQuests: string[]; isEdgeConfig: boolean }> {
+  static async getUsers(): Promise<{ users: Record<string, UserConfig>; commonQuests: string[]; isBlobStore: boolean }> {
     try {
-      // Essayer Blob Store d'abord
+      // Récupérer depuis Blob Store uniquement
       const blobUsers = await blobStorageStrategy.getUsers();
       const blobCommonQuests = await blobStorageStrategy.getCommonQuests();
 
-      if (Object.keys(blobUsers.data).length > 0 && !blobUsers.fallback) {
-        console.log('Utilisation de Blob Store pour les utilisateurs');
-        return {
-          users: blobUsers.data,
-          commonQuests: blobCommonQuests.data,
-          isEdgeConfig: false // Blob Store instead of Edge Config
-        };
-      }
+      console.log('Utilisation de Blob Store pour les utilisateurs');
+      return {
+        users: blobUsers.data,
+        commonQuests: blobCommonQuests.data,
+        isBlobStore: true
+      };
     } catch (error) {
-      console.log('Blob Store non disponible, utilisation des fichiers JSON');
+      console.error('Erreur lors de la récupération des utilisateurs depuis Blob Store:', error);
+      throw new Error('Impossible de récupérer les utilisateurs depuis Blob Store');
     }
-
-    // Fallback vers les fichiers JSON
-    const config = await this.loadUsersConfig();
-    return {
-      users: config.users,
-      commonQuests: config.commonQuests,
-      isEdgeConfig: false
-    };
   }
 
   /**
-   * Récupère toutes les quêtes (Blob Store优先)
+   * Récupère toutes les quêtes depuis Blob Store
    */
   static async getQuests(): Promise<Record<string, QuestConfig>> {
     try {
-      // Essayer Blob Store d'abord
+      // Récupérer depuis Blob Store uniquement
       const blobQuests = await blobStorageStrategy.getQuests();
 
-      if (Object.keys(blobQuests.data).length > 0 && !blobQuests.fallback) {
-        console.log('Utilisation de Blob Store pour les quêtes');
-        return blobQuests.data;
-      }
+      console.log('Utilisation de Blob Store pour les quêtes');
+      return blobQuests.data;
     } catch (error) {
-      console.log('Blob Store non disponible pour les quêtes, utilisation des fichiers JSON');
+      console.error('Erreur lors de la récupération des quêtes depuis Blob Store:', error);
+      throw new Error('Impossible de récupérer les quêtes depuis Blob Store');
     }
-
-    // Fallback vers les fichiers JSON
-    const config = await this.loadQuestsConfig();
-    return config.quests;
   }
 
   /**
-   * Vérifie le mot de passe admin
+   * Vérifie le mot de passe admin depuis Blob Store
    */
   static async verifyAdminPassword(password: string): Promise<boolean> {
     try {
-      // Essayer Blob Store d'abord
+      // Récupérer depuis Blob Store uniquement
       const blobPassword = await blobStorageStrategy.getAdminPassword();
-      if (!blobPassword.fallback) {
-        return password === blobPassword.data;
-      }
-    } catch (error) {
-      console.log('Blob Store non disponible pour le mot de passe admin, utilisation des fichiers JSON');
-    }
 
-    // Fallback vers les fichiers JSON
-    const config = await this.loadUsersConfig();
-    return password === config.adminPassword;
+      console.log('Vérification du mot de passe admin via Blob Store');
+      return password === blobPassword.data;
+    } catch (error) {
+      console.error('Erreur lors de la vérification du mot de passe admin depuis Blob Store:', error);
+      // En cas d'erreur, utiliser le mot de passe par défaut pour sécurité
+      return password === 'admin123';
+    }
   }
 
   /**
-   * Met à jour la configuration des utilisateurs (avec Blob Store)
+   * Met à jour la configuration des utilisateurs dans Blob Store
    */
   static async updateUsersConfig(
     users: Record<string, UserConfig>,
@@ -193,9 +129,9 @@ export class VercelDataService {
       const success = await blobStorageStrategy.updateUsers(users);
 
       if (success) {
-        // Also update common quests if needed
+        // Mettre à jour les quêtes communes également
         const fullConfig = await blobStorageStrategy.getFullConfig();
-        if (fullConfig.data && !fullConfig.fallback) {
+        if (fullConfig.data) {
           fullConfig.data.commonQuests = commonQuests;
           await blobStorageStrategy.updateFullConfig(fullConfig.data);
         }
@@ -205,52 +141,20 @@ export class VercelDataService {
           message: 'Configuration des utilisateurs mise à jour avec succès dans Blob Store.'
         };
       } else {
-        // Fallback: télécharger le JSON si Blob Store échoue
-        return this.downloadUsersConfigFallback(users, commonQuests);
+        throw new Error('Blob Store update failed');
       }
     } catch (error) {
       console.error('Erreur lors de la mise à jour via Blob Store:', error);
-      // Fallback: télécharger le JSON
-      return this.downloadUsersConfigFallback(users, commonQuests);
+      return {
+        success: false,
+        message: 'Erreur lors de la mise à jour de la configuration des utilisateurs dans Blob Store.'
+      };
     }
   }
 
+  
   /**
-   * Fallback: télécharger la configuration des utilisateurs
-   */
-  private static async downloadUsersConfigFallback(
-    users: Record<string, UserConfig>,
-    commonQuests: string[]
-  ): Promise<{ success: boolean; message: string }> {
-    const config: UsersConfig = {
-      users,
-      commonQuests,
-      adminPassword: 'admin123',
-      lastUpdated: new Date().toISOString(),
-      version: '1.0'
-    };
-
-    // Créer un fichier JSON à télécharger
-    const blob = new Blob([JSON.stringify(config, null, 2)], {
-      type: 'application/json'
-    });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement('a');
-    link.href = url;
-    link.download = 'users-config.json';
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    URL.revokeObjectURL(url);
-
-    return {
-      success: true,
-      message: 'Configuration des utilisateurs téléchargée. Remplacez le fichier users-config.json dans votre projet et déployez.'
-    };
-  }
-
-  /**
-   * Met à jour la configuration des quêtes (avec Blob Store)
+   * Met à jour la configuration des quêtes dans Blob Store
    */
   static async updateQuestsConfig(
     quests: Record<string, QuestConfig>
@@ -265,49 +169,19 @@ export class VercelDataService {
           message: 'Configuration des quêtes mise à jour avec succès dans Blob Store.'
         };
       } else {
-        // Fallback: télécharger le JSON si Blob Store échoue
-        return this.downloadQuestsConfigFallback(quests);
+        throw new Error('Blob Store update failed');
       }
     } catch (error) {
       console.error('Erreur lors de la mise à jour via Blob Store:', error);
-      // Fallback: télécharger le JSON
-      return this.downloadQuestsConfigFallback(quests);
+      return {
+        success: false,
+        message: 'Erreur lors de la mise à jour de la configuration des quêtes dans Blob Store.'
+      };
     }
   }
 
   /**
-   * Fallback: télécharger la configuration des quêtes
-   */
-  private static async downloadQuestsConfigFallback(
-    quests: Record<string, QuestConfig>
-  ): Promise<{ success: boolean; message: string }> {
-    const config: QuestsLibrary = {
-      quests,
-      lastUpdated: new Date().toISOString(),
-      version: '1.0'
-    };
-
-    // Créer un fichier JSON à télécharger
-    const blob = new Blob([JSON.stringify(config, null, 2)], {
-      type: 'application/json'
-    });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement('a');
-    link.href = url;
-    link.download = 'quests-library.json';
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    URL.revokeObjectURL(url);
-
-    return {
-      success: true,
-      message: 'Configuration des quêtes téléchargée. Remplacez le fichier quests-library.json dans votre projet et déployez.'
-    };
-  }
-
-  /**
-   * Crée un nouvel utilisateur
+   * Crée un nouvel utilisateur dans Blob Store
    */
   static async createUser(userData: Partial<UserConfig>): Promise<UserConfig> {
     const users = await this.getUsers();
@@ -334,41 +208,58 @@ export class VercelDataService {
       }
     };
 
-    // Ajouter l'utilisateur à la configuration locale (temporaire)
+    // Ajouter l'utilisateur
     users.users[newUser.id] = newUser;
 
-    // Télécharger la configuration mise à jour
-    await this.updateUsersConfig(users.users, users.commonQuests);
+    // Mettre à jour dans Blob Store
+    const result = await this.updateUsersConfig(users.users, users.commonQuests);
+    if (!result.success) {
+      throw new Error(result.message);
+    }
 
     return newUser;
   }
 
   /**
-   * Supprime un utilisateur
+   * Supprime un utilisateur de Blob Store
    */
   static async deleteUser(userId: string): Promise<{ success: boolean; message: string }> {
-    const users = await this.getUsers();
+    try {
+      const users = await this.getUsers();
 
-    if (!users.users[userId]) {
+      if (!users.users[userId]) {
+        return {
+          success: false,
+          message: 'Utilisateur non trouvé'
+        };
+      }
+
+      delete users.users[userId];
+
+      // Mettre à jour dans Blob Store
+      const result = await this.updateUsersConfig(users.users, users.commonQuests);
+      if (!result.success) {
+        return {
+          success: false,
+          message: result.message
+        };
+      }
+
+      return {
+        success: true,
+        message: 'Utilisateur supprimé avec succès'
+      };
+    } catch (error) {
+      console.error('Erreur lors de la suppression de l\'utilisateur:', error);
       return {
         success: false,
-        message: 'Utilisateur non trouvé'
+        message: 'Erreur lors de la suppression de l\'utilisateur'
       };
     }
-
-    delete users.users[userId];
-
-    // Télécharger la configuration mise à jour
-    await this.updateUsersConfig(users.users, users.commonQuests);
-
-    return {
-      success: true,
-      message: 'Utilisateur supprimé avec succès'
-    };
   }
 
   /**
-   * Crée une nouvelle quête
+   * Crée une nouvelle quête dans Blob Store
    */
   static async createQuest(questData: Partial<QuestConfig>): Promise<QuestConfig> {
     const quests = await this.getQuests();
@@ -385,36 +276,53 @@ export class VercelDataService {
       requirements: questData.requirements || []
     };
 
-    // Ajouter la quête à la configuration locale (temporaire)
+    // Ajouter la quête
     quests[newQuest.id] = newQuest;
 
-    // Télécharger la configuration mise à jour
-    await this.updateQuestsConfig(quests);
+    // Mettre à jour dans Blob Store
+    const result = await this.updateQuestsConfig(quests);
+    if (!result.success) {
+      throw new Error(result.message);
+    }
 
     return newQuest;
   }
 
   /**
-   * Supprime une quête
+   * Supprime une quête de Blob Store
    */
   static async deleteQuest(questId: string): Promise<{ success: boolean; message: string }> {
-    const quests = await this.getQuests();
+    try {
+      const quests = await this.getQuests();
 
-    if (!quests[questId]) {
+      if (!quests[questId]) {
+        return {
+          success: false,
+          message: 'Quête non trouvée'
+        };
+      }
+
+      delete quests[questId];
+
+      // Mettre à jour dans Blob Store
+      const result = await this.updateQuestsConfig(quests);
+      if (!result.success) {
+        return {
+          success: false,
+          message: result.message
+        };
+      }
+
+      return {
+        success: true,
+        message: 'Quête supprimée avec succès'
+      };
+    } catch (error) {
+      console.error('Erreur lors de la suppression de la quête:', error);
       return {
         success: false,
-        message: 'Quête non trouvée'
+        message: 'Erreur lors de la suppression de la quête'
       };
     }
-
-    delete quests[questId];
-
-    // Télécharger la configuration mise à jour
-    await this.updateQuestsConfig(quests);
-
-    return {
-      success: true,
-      message: 'Quête supprimée avec succès'
-    };
   }
 }

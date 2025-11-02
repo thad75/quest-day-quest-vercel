@@ -79,7 +79,7 @@ export class BlobStoreManager {
 
       // Check if Blob Store is properly configured first
       if (!this.blobToken) {
-        console.log('Blob Store token not configured - skipping fetch');
+        console.warn('❌ Blob Store token not configured - cannot fetch data');
         return null;
       }
 
@@ -92,7 +92,7 @@ export class BlobStoreManager {
       const mainConfigBlob = blobs.find(blob => blob.pathname === this.primaryPath);
 
       if (!mainConfigBlob) {
-        console.log('Main config file not found in Blob Store - will create on first write');
+        console.log('ℹ️ Main config file not found in Blob Store - needs initialization');
         return null;
       }
 
@@ -117,6 +117,46 @@ export class BlobStoreManager {
       this.logError('GET_FULL_CONFIG', error);
       console.error('Failed to get full config from Blob Store:', error);
       return null;
+    }
+  }
+
+  /**
+   * Create initial configuration in Blob Store
+   */
+  async createInitialConfig(config: BlobStoreConfig): Promise<boolean> {
+    try {
+      this.metrics.totalOperations++;
+      this.metrics.lastOperation = 'CREATE_INITIAL_CONFIG';
+
+      // Create backup before creating initial config
+      const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
+      const backupPath = `${this.backupPath}initial-setup-backup-${timestamp}.json`;
+
+      await put(backupPath, JSON.stringify(config, null, 2), {
+        access: 'public',
+        token: this.blobToken,
+        contentType: 'application/json'
+      });
+
+      // Upload the initial configuration
+      const blob = await put(this.primaryPath, JSON.stringify(config, null, 2), {
+        access: 'public',
+        token: this.blobToken,
+        contentType: 'application/json'
+      });
+
+      this.metrics.successfulOperations++;
+      this.metrics.lastUpdated = new Date().toISOString();
+      this.metrics.storageSize = JSON.stringify(config).length;
+      this.primaryUrl = blob.url;
+
+      console.log('✅ Initial configuration created successfully in Blob Store:', blob.url);
+      return true;
+    } catch (error) {
+      this.metrics.failedOperations++;
+      this.logError('CREATE_INITIAL_CONFIG', error);
+      console.error('Failed to create initial config in Blob Store:', error);
+      return false;
     }
   }
 

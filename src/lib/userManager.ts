@@ -1,4 +1,5 @@
 import { UserProfile, PlayerProgress } from '@/types/quest';
+import { VercelDataService } from './vercelDataService';
 
 export interface UserConfig {
   id: string;
@@ -14,8 +15,12 @@ export interface UserConfig {
   stats: {
     totalXP: number;
     currentLevel: number;
-    currentStreak: number;
+    currentXP: number;
+    xpToNextLevel: number;
+    questsCompleted: number;
     totalQuestsCompleted: number;
+    currentStreak: number;
+    longestStreak: number;
   };
 }
 
@@ -26,8 +31,9 @@ export interface QuestConfig {
   category: string;
   xp: number;
   difficulty: 'facile' | 'moyen' | 'difficile';
-  timeLimit: number;
   icon: string;
+  tags: string[];
+  requirements: string[];
 }
 
 export interface UsersConfig {
@@ -51,42 +57,52 @@ class UserManager {
 
   async loadConfigs(): Promise<void> {
     try {
-      // Charger les configurations depuis les fichiers publics
-      const usersResponse = await fetch('/users-config.json');
-      const questsResponse = await fetch('/quests-library.json');
+      // Initialiser Blob Store si nécessaire
+      await VercelDataService.initializeBlobStore();
 
-      if (!usersResponse.ok || !questsResponse.ok) {
-        console.warn('Impossible de charger les fichiers de configuration, utilisation des données par défaut');
-        // Configuration par défaut si les fichiers ne sont pas accessibles
-        this.usersConfig = {
-          users: {},
-          commonQuests: [],
-          adminPassword: 'admin123',
-          lastUpdated: new Date().toISOString(),
-          version: '1.0'
-        };
-        this.questsLibrary = {
-          quests: {},
-          lastUpdated: new Date().toISOString(),
-          version: '1.0'
-        };
-        return;
-      }
+      // Charger les configurations depuis Blob Store
+      const usersData = await VercelDataService.getUsers();
+      const questsData = await VercelDataService.getQuests();
 
-      this.usersConfig = await usersResponse.json();
-      this.questsLibrary = await questsResponse.json();
+      this.usersConfig = {
+        users: usersData.users,
+        commonQuests: usersData.commonQuests,
+        adminPassword: 'admin123', // Will be updated from Blob Store in a real implementation
+        lastUpdated: new Date().toISOString(),
+        version: '1.0'
+      };
+
+      this.questsLibrary = {
+        quests: questsData,
+        lastUpdated: new Date().toISOString(),
+        version: '1.0'
+      };
+
+      console.log('Configuration chargée depuis Blob Store avec succès');
     } catch (error) {
-      console.error('Erreur lors du chargement des configurations:', error);
+      console.error('Erreur lors du chargement des configurations depuis Blob Store:', error);
       // Configuration par défaut en cas d'erreur
       this.usersConfig = {
         users: {},
-        commonQuests: [],
+        commonQuests: ['1'], // Default common quest
         adminPassword: 'admin123',
         lastUpdated: new Date().toISOString(),
         version: '1.0'
       };
       this.questsLibrary = {
-        quests: {},
+        quests: {
+          '1': {
+            id: '1',
+            title: 'Boire 2L d\'eau',
+            description: 'Boire 2 litres d\'eau au cours de la journée',
+            category: 'santé',
+            xp: 10,
+            difficulty: 'facile',
+            icon: '💧',
+            tags: ['hydratation', 'santé'],
+            requirements: []
+          }
+        },
         lastUpdated: new Date().toISOString(),
         version: '1.0'
       };
@@ -174,13 +190,15 @@ class UserManager {
     return Object.values(this.questsLibrary.quests);
   }
 
-  verifyAdminPassword(password: string): boolean {
-    if (!this.usersConfig) {
-      // Fallback: si la configuration n'est pas chargée, utiliser le mot de passe par défaut
-      console.warn('Configuration non chargée, utilisation du mot de passe par défaut');
+  async verifyAdminPassword(password: string): Promise<boolean> {
+    try {
+      // Utiliser Blob Store pour vérifier le mot de passe
+      return await VercelDataService.verifyAdminPassword(password);
+    } catch (error) {
+      console.error('Erreur lors de la vérification du mot de passe admin:', error);
+      // Fallback: utiliser le mot de passe par défaut
       return password === 'admin123';
     }
-    return password === this.usersConfig.adminPassword;
   }
 
   // Pour l'admin - méthodes de modification (à implémenter côté admin)

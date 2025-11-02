@@ -9,8 +9,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { toast } from 'sonner';
 import { userManager, UserConfig, QuestConfig } from '@/lib/userManager';
-import { ApiService } from '@/lib/apiService';
-import { ConfigManager } from '@/lib/configManager';
+import { VercelDataService } from '@/lib/vercelDataService';
 import { Gamepad2, Users, Settings, LogOut, Save, Plus, Trash2, Edit, Download, Upload, FileText, Database, CheckCircle, AlertCircle, Copy, Cloud, Server } from 'lucide-react';
 
 const Admin = () => {
@@ -22,7 +21,7 @@ const Admin = () => {
   const [selectedUser, setSelectedUser] = useState<UserConfig | null>(null);
   const [editingMode, setEditingMode] = useState<'user' | 'quest' | null>(null);
   const [isLoading, setIsLoading] = useState(false);
-  const [isEdgeConfigAvailable, setIsEdgeConfigAvailable] = useState(false);
+  const [isBlobStoreAvailable, setIsBlobStoreAvailable] = useState(true);
 
   const navigate = useNavigate();
 
@@ -32,28 +31,21 @@ const Admin = () => {
 
       setIsLoading(true);
       try {
-        // Load configuration from API
-        const configResponse = await ApiService.getConfig();
+        // Load configuration from Blob Store
+        await userManager.loadConfigs();
+        const usersData = await userManager.getAvailableUsers();
+        const questsData = await userManager.getAllQuests();
 
-        if (configResponse.success && configResponse.data) {
-          const { users: usersData, quests: questsData, commonQuests: commonData, isEdgeConfigAvailable } = configResponse.data;
+        setUsers(usersData);
+        setQuests(questsData);
+        setCommonQuests(userManager.getUsersConfig()?.commonQuests || []);
+        setIsBlobStoreAvailable(true);
 
-          setUsers(Object.values(usersData || {}));
-          setQuests(Object.values(questsData || {}));
-          setCommonQuests(commonData || []);
-          setIsEdgeConfigAvailable(isEdgeConfigAvailable);
-
-          if (configResponse.fallback) {
-            toast.info('Chargement depuis les fichiers locaux (Edge Config non disponible)');
-          } else {
-            toast.success('Configuration chargée depuis Edge Config');
-          }
-        } else {
-          toast.error('Erreur lors du chargement de la configuration');
-        }
+        toast.success('Configuration chargée depuis Blob Store');
       } catch (error) {
         console.error('Error loading data:', error);
-        toast.error('Erreur lors du chargement des données');
+        toast.error('Erreur lors du chargement des données depuis Blob Store');
+        setIsBlobStoreAvailable(false);
       } finally {
         setIsLoading(false);
       }
@@ -62,13 +54,18 @@ const Admin = () => {
     loadData();
   }, [isAuthenticated]);
 
-  const handleLogin = () => {
-    if (userManager.verifyAdminPassword(password)) {
-      setIsAuthenticated(true);
-      ApiService.setAdminPassword(password); // Set password for API calls
-      toast.success('Connexion administrateur réussie');
-    } else {
-      toast.error('Mot de passe incorrect');
+  const handleLogin = async () => {
+    try {
+      const isValid = await userManager.verifyAdminPassword(password);
+      if (isValid) {
+        setIsAuthenticated(true);
+        toast.success('Connexion administrateur réussie');
+      } else {
+        toast.error('Mot de passe incorrect');
+      }
+    } catch (error) {
+      console.error('Login error:', error);
+      toast.error('Erreur lors de la vérification du mot de passe');
     }
   };
 
@@ -91,12 +88,17 @@ const Admin = () => {
         return acc;
       }, {} as Record<string, QuestConfig>);
 
-      const response = await ApiService.updateConfig(usersRecord, questsRecord, commonQuests);
+      // Update users and quests separately using VercelDataService
+      const usersResponse = await VercelDataService.updateUsersConfig(usersRecord, commonQuests);
+      const questsResponse = await VercelDataService.updateQuestsConfig(questsRecord);
 
-      if (response.success) {
-        toast.success('Configuration sauvegardée avec succès !');
+      if (usersResponse.success && questsResponse.success) {
+        toast.success('Configuration sauvegardée avec succès dans Blob Store !');
+        // Reload the data to reflect changes
+        await userManager.loadConfigs();
       } else {
-        toast.error('Erreur lors de la sauvegarde: ' + response.error);
+        toast.error('Erreur lors de la sauvegarde: ' +
+          (usersResponse.message || questsResponse.message));
       }
     } catch (error) {
       console.error('Error saving changes:', error);
@@ -114,78 +116,6 @@ const Admin = () => {
     });
   };
 
-  const handleSaveUsers = () => {
-    ConfigManager.exportUsersConfig(users, commonQuests);
-    toast.success('Configuration des utilisateurs exportée avec succès');
-  };
-
-  const handleSaveQuests = () => {
-    ConfigManager.exportQuestsConfig(quests);
-    toast.success('Configuration des quêtes exportée avec succès');
-  };
-
-  const handleExportFullConfig = () => {
-    ConfigManager.exportFullConfig(users, quests, commonQuests);
-    toast.success('Configuration complète exportée avec succès');
-  };
-
-  const handleGenerateBackup = () => {
-    ConfigManager.generateBackup(users, quests, commonQuests);
-    toast.success('Backup généré avec succès');
-  };
-
-  const handleImportUsers = async (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
-    if (!file) return;
-
-    try {
-      const config = await ConfigManager.importUsersConfig(file);
-      const validation = ConfigManager.validateUsersConfig(config);
-
-      if (!validation.isValid) {
-        toast.error('Erreurs de validation: ' + validation.errors.join(', '));
-        return;
-      }
-
-      // Convertir l'objet en tableau
-      const importedUsers = Object.values(config.users);
-      setUsers(importedUsers);
-
-      toast.success(`${importedUsers.length} utilisateurs importés avec succès`);
-    } catch (error) {
-      toast.error('Erreur lors de l\'import: ' + (error as Error).message);
-    }
-
-    // Reset l'input file
-    event.target.value = '';
-  };
-
-  const handleImportQuests = async (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
-    if (!file) return;
-
-    try {
-      const config = await ConfigManager.importQuestsConfig(file);
-      const validation = ConfigManager.validateQuestsConfig(config);
-
-      if (!validation.isValid) {
-        toast.error('Erreurs de validation: ' + validation.errors.join(', '));
-        return;
-      }
-
-      // Convertir l'objet en tableau
-      const importedQuests = Object.values(config.quests);
-      setQuests(importedQuests);
-
-      toast.success(`${importedQuests.length} quêtes importées avec succès`);
-    } catch (error) {
-      toast.error('Erreur lors de l\'import: ' + (error as Error).message);
-    }
-
-    // Reset l'input file
-    event.target.value = '';
-  };
-
   const handleCreateUser = () => {
     const newUser: UserConfig = {
       id: `user${Date.now()}`,
@@ -201,14 +131,17 @@ const Admin = () => {
       stats: {
         totalXP: 0,
         currentLevel: 1,
+        currentXP: 0,
+        xpToNextLevel: 100,
+        questsCompleted: 0,
+        totalQuestsCompleted: 0,
         currentStreak: 0,
-        totalQuestsCompleted: 0
+        longestStreak: 0
       }
     };
     setUsers([...users, newUser]);
     setSelectedUser(newUser);
     setEditingMode('user');
-    setUnsavedChanges(true);
     toast.success('Nouvel utilisateur créé - Pensez à sauvegarder !');
   };
 
@@ -220,19 +153,21 @@ const Admin = () => {
       category: 'personnel',
       xp: 10,
       difficulty: 'facile',
-      timeLimit: 24,
-      icon: '📋'
+      icon: '📋',
+      tags: [],
+      requirements: []
     };
     setQuests([...quests, newQuest]);
     toast.success('Nouvelle quête créée');
   };
 
+  
   const handleDeleteUser = async (userId: string) => {
     if (!confirm('Êtes-vous sûr de vouloir supprimer cet utilisateur ?')) return;
 
     setIsLoading(true);
     try {
-      const response = await ApiService.deleteUser(userId);
+      const response = await VercelDataService.deleteUser(userId);
 
       if (response.success) {
         setUsers(users.filter(u => u.id !== userId));
@@ -240,8 +175,10 @@ const Admin = () => {
           setSelectedUser(null);
         }
         toast.success('Utilisateur supprimé avec succès');
+        // Reload to reflect changes
+        await userManager.loadConfigs();
       } else {
-        toast.error('Erreur lors de la suppression: ' + response.error);
+        toast.error('Erreur lors de la suppression: ' + response.message);
       }
     } catch (error) {
       console.error('Error deleting user:', error);
@@ -256,13 +193,15 @@ const Admin = () => {
 
     setIsLoading(true);
     try {
-      const response = await ApiService.deleteQuest(questId);
+      const response = await VercelDataService.deleteQuest(questId);
 
       if (response.success) {
         setQuests(quests.filter(q => q.id !== questId));
         toast.success('Quête supprimée avec succès');
+        // Reload to reflect changes
+        await userManager.loadConfigs();
       } else {
-        toast.error('Erreur lors de la suppression: ' + response.error);
+        toast.error('Erreur lors de la suppression: ' + response.message);
       }
     } catch (error) {
       console.error('Error deleting quest:', error);
@@ -325,15 +264,15 @@ const Admin = () => {
             <div className="flex items-center gap-2">
               {/* Status indicator */}
               <div className="flex items-center gap-2 px-3 py-1 rounded-lg border text-sm">
-                {isEdgeConfigAvailable ? (
+                {isBlobStoreAvailable ? (
                   <>
                     <Cloud className="h-4 w-4 text-green-500" />
-                    <span className="text-green-600">Edge Config</span>
+                    <span className="text-green-600">Blob Store</span>
                   </>
                 ) : (
                   <>
-                    <Server className="h-4 w-4 text-orange-500" />
-                    <span className="text-orange-600">Local Files</span>
+                    <Server className="h-4 w-4 text-red-500" />
+                    <span className="text-red-600">Blob Store Error</span>
                   </>
                 )}
               </div>
@@ -359,7 +298,7 @@ const Admin = () => {
 
       <div className="container max-w-7xl mx-auto p-6">
         <Tabs defaultValue="users" className="space-y-6">
-          <TabsList className="grid w-full grid-cols-4">
+          <TabsList className="grid w-full grid-cols-3">
             <TabsTrigger value="users" className="flex items-center gap-2">
               <Users className="h-4 w-4" />
               Utilisateurs
@@ -367,10 +306,6 @@ const Admin = () => {
             <TabsTrigger value="quests" className="flex items-center gap-2">
               <Gamepad2 className="h-4 w-4" />
               Quêtes
-            </TabsTrigger>
-            <TabsTrigger value="export" className="flex items-center gap-2">
-              <Database className="h-4 w-4" />
-              Export/Import
             </TabsTrigger>
             <TabsTrigger value="stats" className="flex items-center gap-2">
               <Settings className="h-4 w-4" />
@@ -558,180 +493,7 @@ const Admin = () => {
             </Button>
           </TabsContent>
 
-          {/* Export/Import Tab */}
-          <TabsContent value="export" className="space-y-6">
-            <div className="space-y-8">
-              <div>
-                <h2 className="text-2xl font-bold mb-2">Export/Import Configuration</h2>
-                <p className="text-muted-foreground">
-                  Exportez vos modifications pour les sauvegarder, puis importez-les pour les appliquer.
-                </p>
-              </div>
-
-              {/* Export Section */}
-              <Card>
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
-                    <Download className="h-5 w-5" />
-                    Exporter la Configuration
-                  </CardTitle>
-                  <CardDescription>
-                    Téléchargez les fichiers de configuration pour les sauvegarder ou les partager
-                  </CardDescription>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  {/* Bouton de sauvegarde directe */}
-                  <div className="p-4 rounded-xl bg-gradient-to-r from-primary/10 to-secondary/10 border border-primary/20">
-                    <div className="flex items-center justify-between mb-3">
-                      <div className="flex items-center gap-2">
-                        <Save className="h-5 w-5 text-primary" />
-                        <h4 className="font-semibold text-primary">Sauvegarde Directe</h4>
-                      </div>
-                      {unsavedChanges && (
-                        <span className="px-2 py-1 text-xs bg-orange-500/20 text-orange-600 rounded-full">
-                          Non sauvegardé
-                        </span>
-                      )}
-                    </div>
-                    <Button onClick={handleLiveSave} className="w-full h-12 bg-gradient-to-r from-primary to-secondary hover:scale-[1.02] transition-all duration-300">
-                      <Save className="h-4 w-4 mr-2" />
-                      Sauvegarder et Copier JSON
-                    </Button>
-                    {lastSaveTime && (
-                      <p className="text-xs text-muted-foreground text-center">
-                        Dernière sauvegarde: {lastSaveTime}
-                      </p>
-                    )}
-                  </div>
-
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <Button onClick={handleSaveUsers} className="btn-scale h-12">
-                      <Users className="h-4 w-4 mr-2" />
-                      Exporter les Utilisateurs
-                    </Button>
-                    <Button onClick={handleSaveQuests} className="btn-scale h-12">
-                      <Gamepad2 className="h-4 w-4 mr-2" />
-                      Exporter les Quêtes
-                    </Button>
-                    <Button onClick={handleExportFullConfig} className="btn-scale h-12">
-                      <FileText className="h-4 w-4 mr-2" />
-                      Exporter Tout (Fichier)
-                    </Button>
-                    <Button onClick={handleGenerateBackup} variant="outline" className="btn-scale h-12">
-                      <Database className="h-4 w-4 mr-2" />
-                      Générer un Backup
-                    </Button>
-                  </div>
-
-                  <div className="p-4 rounded-lg bg-muted/20">
-                    <h4 className="font-medium mb-2">Instructions pour Vercel:</h4>
-                    <ol className="text-sm text-muted-foreground space-y-1 list-decimal list-inside">
-                      <li>Cliquez sur "Exporter Tout" pour télécharger la configuration</li>
-                      <li>Remplacez les fichiers JSON dans votre projet local</li>
-                      <li>Faites un commit: <code className="bg-muted px-1 rounded">git add . && git commit -m "Update config"</code></li>
-                      <li>Push: <code className="bg-muted px-1 rounded">git push</code></li>
-                      <li>Vercel déploiera automatiquement les changements</li>
-                    </ol>
-                  </div>
-                </CardContent>
-              </Card>
-
-              {/* Import Section */}
-              <Card>
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
-                    <Upload className="h-5 w-5" />
-                    Importer la Configuration
-                  </CardTitle>
-                  <CardDescription>
-                    Importez des fichiers de configuration pour mettre à jour les données
-                  </CardDescription>
-                </CardHeader>
-                <CardContent className="space-y-6">
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <div className="space-y-4">
-                      <div>
-                        <Label htmlFor="users-import" className="text-sm font-medium">
-                          Importer les Utilisateurs
-                        </Label>
-                        <Input
-                          id="users-import"
-                          type="file"
-                          accept=".json"
-                          onChange={handleImportUsers}
-                          className="mt-2"
-                        />
-                        <p className="text-xs text-muted-foreground mt-1">
-                          Format: users-config.json
-                        </p>
-                      </div>
-                    </div>
-
-                    <div className="space-y-4">
-                      <div>
-                        <Label htmlFor="quests-import" className="text-sm font-medium">
-                          Importer les Quêtes
-                        </Label>
-                        <Input
-                          id="quests-import"
-                          type="file"
-                          accept=".json"
-                          onChange={handleImportQuests}
-                          className="mt-2"
-                        />
-                        <p className="text-xs text-muted-foreground mt-1">
-                          Format: quests-library.json
-                        </p>
-                      </div>
-                    </div>
-                  </div>
-
-                  <div className="p-4 rounded-lg bg-yellow-50 border border-yellow-200">
-                    <h4 className="font-medium text-yellow-800 mb-2 flex items-center gap-2">
-                      <Settings className="h-4 w-4" />
-                      ⚠️ Important
-                    </h4>
-                    <p className="text-sm text-yellow-700">
-                      L'import remplace les données actuelles. Assurez-vous d'avoir un backup avant d'importer.
-                      Les modifications ne seront persistantes qu'après avoir exporté et remplacé les fichiers sur Vercel.
-                    </p>
-                  </div>
-                </CardContent>
-              </Card>
-
-              {/* Quick Stats */}
-              <Card>
-                <CardHeader>
-                  <CardTitle>Configuration Actuelle</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-center">
-                    <div>
-                      <div className="text-2xl font-bold text-primary">{users.length}</div>
-                      <p className="text-sm text-muted-foreground">Utilisateurs</p>
-                    </div>
-                    <div>
-                      <div className="text-2xl font-bold text-secondary">{quests.length}</div>
-                      <p className="text-sm text-muted-foreground">Quêtes</p>
-                    </div>
-                    <div>
-                      <div className="text-2xl font-bold text-accent">
-                        {users.reduce((sum, user) => sum + user.stats.totalQuestsCompleted, 0)}
-                      </div>
-                      <p className="text-sm text-muted-foreground">Quêtes terminées</p>
-                    </div>
-                    <div>
-                      <div className="text-2xl font-bold text-success">
-                        {Math.max(...users.map(u => u.stats.currentLevel), 0)}
-                      </div>
-                      <p className="text-sm text-muted-foreground">Niveau max</p>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-            </div>
-          </TabsContent>
-
+          
           {/* Stats Tab */}
           <TabsContent value="stats" className="space-y-6">
             <h2 className="text-xl font-semibold">Statistiques Générales</h2>
@@ -773,126 +535,14 @@ const Admin = () => {
               </CardHeader>
               <CardContent className="space-y-2">
                 <p><strong>Mode:</strong> Frontend statique Vercel</p>
-                <p><strong>Stockage:</strong> Fichiers JSON</p>
+                <p><strong>Stockage:</strong> Vercel Blob Store</p>
                 <p><strong>Administration:</strong> Mot de passe unique</p>
-                <p><strong>Utilisateurs max:</strong> 10</p>
+                <p><strong>Utilisateurs max:</strong> Illimité</p>
                 <p><strong>Dernière mise à jour:</strong> {new Date().toLocaleDateString()}</p>
               </CardContent>
             </Card>
           </TabsContent>
         </Tabs>
-
-        {/* Modal de sauvegarde directe */}
-        {showLiveSave && saveResult && (
-          <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center p-6 z-50">
-            <Card className="w-full max-w-4xl max-h-[90vh] overflow-y-auto">
-              <CardHeader>
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-3">
-                    <div className="p-2 rounded-xl bg-gradient-to-r from-success to-emerald-500">
-                      <CheckCircle className="h-6 w-6 text-white" />
-                    </div>
-                    <div>
-                      <CardTitle>Configuration Sauvegardée !</CardTitle>
-                      <CardDescription>
-                        {saveResult.users.message} • {saveResult.quests.message}
-                      </CardDescription>
-                    </div>
-                  </div>
-                  <Button
-                    variant="outline"
-                    size="icon"
-                    onClick={() => setShowLiveSave(false)}
-                  >
-                    ×
-                  </Button>
-                </div>
-              </CardHeader>
-
-              <CardContent className="space-y-6">
-                {/* Instructions */}
-                <div className="p-4 rounded-lg bg-blue-50 border border-blue-200">
-                  <h4 className="font-medium text-blue-800 mb-2 flex items-center gap-2">
-                    <AlertCircle className="h-4 w-4" />
-                    Instructions pour déployer sur Vercel:
-                  </h4>
-                  <ol className="text-sm text-blue-700 space-y-1">
-                    {saveResult.instructions?.map((instruction, index) => (
-                      <li key={index}>{instruction}</li>
-                    ))}
-                  </ol>
-                </div>
-
-                {/* JSON Utilisateurs */}
-                <div className="space-y-3">
-                  <div className="flex items-center justify-between">
-                    <h4 className="font-medium">📄 users-config.json</h4>
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      onClick={() => copyToClipboard(saveResult.users.json, 'JSON utilisateurs')}
-                    >
-                      <Copy className="h-4 w-4 mr-1" />
-                      Copier
-                    </Button>
-                  </div>
-                  <div className="relative">
-                    <Textarea
-                      value={saveResult.users.json}
-                      readOnly
-                      className="min-h-[200px] font-mono text-xs"
-                    />
-                  </div>
-                </div>
-
-                {/* JSON Quêtes */}
-                <div className="space-y-3">
-                  <div className="flex items-center justify-between">
-                    <h4 className="font-medium">🎯 quests-library.json</h4>
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      onClick={() => copyToClipboard(saveResult.quests.json, 'JSON quêtes')}
-                    >
-                      <Copy className="h-4 w-4 mr-1" />
-                      Copier
-                    </Button>
-                  </div>
-                  <div className="relative">
-                    <Textarea
-                      value={saveResult.quests.json}
-                      readOnly
-                      className="min-h-[200px] font-mono text-xs"
-                    />
-                  </div>
-                </div>
-
-                {/* Boutons d'action */}
-                <div className="flex gap-3">
-                  <Button
-                    onClick={() => setShowLiveSave(false)}
-                    className="flex-1"
-                  >
-                    J'ai copié les fichiers
-                  </Button>
-                  <Button
-                    variant="outline"
-                    onClick={() => {
-                      // Copier les deux JSON en même temps
-                      const fullJSON = {
-                        users: JSON.parse(saveResult.users.json),
-                        quests: JSON.parse(saveResult.quests.json)
-                      };
-                      copyToClipboard(JSON.stringify(fullJSON, null, 2), 'Configuration complète');
-                    }}
-                  >
-                    Copier tout en un
-                  </Button>
-                </div>
-              </CardContent>
-            </Card>
-          </div>
-        )}
       </div>
     </div>
   );

@@ -368,7 +368,128 @@ export class BlobStorageStrategy {
   }
 
   /**
-   * Get default configuration
+   * Initialize Blob Store with default data if empty
+   */
+  async initializeWithDefaults(): Promise<boolean> {
+    try {
+      // Check if already initialized
+      const config = await blobStoreManager.getFullConfig();
+      if (config && (Object.keys(config.users).length > 0 || Object.keys(config.quests).length > 0)) {
+        console.log('✅ Blob Store already initialized with data');
+        return true;
+      }
+
+      console.log('🔄 Initializing Blob Store with default data...');
+
+      // Create default configuration with sample data
+      const defaultConfig = this.getDefaultConfigWithSampleData();
+
+      // Use createInitialConfig for better handling of first-time setup
+      const success = await blobStoreManager.createInitialConfig(defaultConfig);
+
+      if (success) {
+        console.log('✅ Blob Store initialized with default data:', {
+          usersCount: Object.keys(defaultConfig.users).length,
+          questsCount: Object.keys(defaultConfig.quests).length,
+          commonQuestsCount: defaultConfig.commonQuests.length
+        });
+
+        // Clear cache to force fresh data
+        this.clearCache();
+        return true;
+      } else {
+        throw new Error('Failed to create initial configuration in Blob Store');
+      }
+    } catch (error) {
+      console.error('❌ Failed to initialize Blob Store with defaults:', error);
+      return false;
+    }
+  }
+
+  /**
+   * Get default configuration with sample data
+   */
+  private getDefaultConfigWithSampleData(): BlobStoreConfig {
+    return {
+      users: {
+        "demo1": {
+          id: "demo1",
+          name: "Utilisateur Demo",
+          avatar: "👤",
+          dailyQuests: ["1", "3", "4"],
+          preferences: {
+            categories: ["santé", "apprentissage"],
+            difficulty: "facile",
+            questCount: 3,
+            allowCommonQuests: true
+          },
+          stats: {
+            totalXP: 0,
+            currentLevel: 1,
+            currentXP: 0,
+            xpToNextLevel: 100,
+            questsCompleted: 0,
+            totalQuestsCompleted: 0,
+            currentStreak: 0,
+            longestStreak: 0
+          }
+        }
+      },
+      quests: {
+        "1": {
+          id: "1",
+          title: "Boire 2L d'eau",
+          description: "Boire 2 litres d'eau au cours de la journée",
+          category: "santé",
+          xp: 10,
+          difficulty: "facile",
+          icon: "💧",
+          tags: ["hydratation", "santé"],
+          requirements: []
+        },
+        "2": {
+          id: "2",
+          title: "Méditer 10 minutes",
+          description: "Prends un moment pour te recentrer",
+          category: "santé",
+          xp: 15,
+          difficulty: "facile",
+          icon: "🧘",
+          tags: ["méditation", "bien-être"],
+          requirements: []
+        },
+        "3": {
+          id: "3",
+          title: "Faire 30 minutes de sport",
+          description: "Bouge ton corps pour rester en forme",
+          category: "fitness",
+          xp: 25,
+          difficulty: "moyen",
+          icon: "🏃",
+          tags: ["sport", "santé"],
+          requirements: []
+        },
+        "4": {
+          id: "4",
+          title: "Lire 15 minutes",
+          description: "Apprends quelque chose de nouveau",
+          category: "apprentissage",
+          xp: 20,
+          difficulty: "facile",
+          icon: "📚",
+          tags: ["lecture", "apprentissage"],
+          requirements: []
+        }
+      },
+      commonQuests: ["1", "2"],
+      adminPassword: "admin123",
+      lastUpdated: new Date().toISOString(),
+      version: "1.0"
+    };
+  }
+
+  /**
+   * Get default configuration (empty)
    */
   private getDefaultConfig(): BlobStoreConfig {
     return {
