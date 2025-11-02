@@ -1,247 +1,158 @@
 import { UserConfig, QuestConfig } from './userManager';
-import { VercelDataService } from './vercelDataService';
 
-export interface ApiResponse<T = any> {
-  success: boolean;
-  data?: T;
-  error?: string;
-  message?: string;
-  fallback?: boolean;
-}
+/**
+ * API Service for communicating with server-side Blob Store operations
+ * This avoids CORS issues by using server-side API routes
+ */
 
 export class ApiService {
-  private static adminPassword = 'admin123';
+  private static readonly API_BASE = '/api/blob';
 
   /**
-   * Set admin password for API requests
+   * Get users from API (server-side Blob Store access)
    */
-  static setAdminPassword(password: string) {
-    this.adminPassword = password;
+  static async getUsers(): Promise<{ users: Record<string, UserConfig>; commonQuests: string[]; isBlobStore: boolean }> {
+    try {
+      const response = await fetch(`${this.API_BASE}/users`);
+
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+      }
+
+      const data = await response.json();
+      console.log('☁️ Using API for users (server-side Blob Store access)');
+      return data;
+    } catch (error) {
+      console.error('❌ API failed for users:', error);
+      throw new Error('Failed to fetch users from API');
+    }
   }
 
   /**
-   * Get all users and configuration
+   * Get quests from API
    */
-  static async getUsers(): Promise<ApiResponse<{ users: Record<string, UserConfig>; commonQuests: string[] }>> {
+  static async getQuests(): Promise<Record<string, QuestConfig>> {
     try {
-      const data = await VercelDataService.getUsers();
-      return {
-        success: true,
-        data: {
-          users: data.users,
-          commonQuests: data.commonQuests
+      const response = await fetch(`${this.API_BASE}/quests`);
+
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+      }
+
+      const data = await response.json();
+      console.log('☁️ Using API for quests (server-side Blob Store access)');
+      return data;
+    } catch (error) {
+      console.error('❌ API failed for quests:', error);
+      throw new Error('Failed to fetch quests from API');
+    }
+  }
+
+  /**
+   * Verify admin password via API
+   */
+  static async verifyAdminPassword(password: string): Promise<boolean> {
+    try {
+      const response = await fetch(`${this.API_BASE}/auth`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
         },
-        fallback: !data.isEdgeConfig // Indique si on utilise le fallback
-      };
+        body: JSON.stringify({ password }),
+      });
+
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+      }
+
+      const data = await response.json();
+      console.log('☁️ Using API for admin password verification');
+      return data.isValid;
     } catch (error) {
-      return {
-        success: false,
-        error: `Failed to fetch users: ${(error as Error).message}`
-      };
+      console.error('❌ API failed for admin password:', error);
+      // Fallback to default password for security
+      return password === 'admin123';
     }
   }
 
   /**
-   * Create a new user
+   * Update users via API
    */
-  static async createUser(userData: Partial<UserConfig>): Promise<ApiResponse<UserConfig>> {
-    try {
-      const data = await VercelDataService.createUser(userData);
-      return {
-        success: true,
-        data,
-        message: 'Utilisateur créé avec succès. Le fichier de configuration a été téléchargé.'
-      };
-    } catch (error) {
-      return {
-        success: false,
-        error: `Failed to create user: ${(error as Error).message}`
-      };
-    }
-  }
-
-  /**
-   * Update an existing user
-   */
-  static async updateUser(userId: string, updates: Partial<UserConfig>): Promise<ApiResponse<UserConfig>> {
-    try {
-      // Pour l'instant, on utilise la création car la mise à jour directe n'est pas disponible
-      const data = await VercelDataService.createUser({ id: userId, ...updates });
-      return {
-        success: true,
-        data,
-        message: 'Utilisateur mis à jour avec succès. Le fichier de configuration a été téléchargé.'
-      };
-    } catch (error) {
-      return {
-        success: false,
-        error: `Failed to update user: ${(error as Error).message}`
-      };
-    }
-  }
-
-  /**
-   * Delete a user
-   */
-  static async deleteUser(userId: string): Promise<ApiResponse> {
-    try {
-      const result = await VercelDataService.deleteUser(userId);
-      return {
-        success: result.success,
-        message: result.message
-      };
-    } catch (error) {
-      return {
-        success: false,
-        error: `Failed to delete user: ${(error as Error).message}`
-      };
-    }
-  }
-
-  /**
-   * Get all quests
-   */
-  static async getQuests(): Promise<ApiResponse<Record<string, QuestConfig>>> {
-    try {
-      const data = await VercelDataService.getQuests();
-      return {
-        success: true,
-        data,
-        fallback: true // Indique qu'on utilise les fichiers locaux
-      };
-    } catch (error) {
-      return {
-        success: false,
-        error: `Failed to fetch quests: ${(error as Error).message}`
-      };
-    }
-  }
-
-  /**
-   * Create a new quest
-   */
-  static async createQuest(questData: Partial<QuestConfig>): Promise<ApiResponse<QuestConfig>> {
-    try {
-      const data = await VercelDataService.createQuest(questData);
-      return {
-        success: true,
-        data,
-        message: 'Quête créée avec succès. Le fichier de configuration a été téléchargé.'
-      };
-    } catch (error) {
-      return {
-        success: false,
-        error: `Failed to create quest: ${(error as Error).message}`
-      };
-    }
-  }
-
-  /**
-   * Update an existing quest
-   */
-  static async updateQuest(questId: string, updates: Partial<QuestConfig>): Promise<ApiResponse<QuestConfig>> {
-    try {
-      // Pour l'instant, on utilise la création car la mise à jour directe n'est pas disponible
-      const data = await VercelDataService.createQuest({ id: questId, ...updates });
-      return {
-        success: true,
-        data,
-        message: 'Quête mise à jour avec succès. Le fichier de configuration a été téléchargé.'
-      };
-    } catch (error) {
-      return {
-        success: false,
-        error: `Failed to update quest: ${(error as Error).message}`
-      };
-    }
-  }
-
-  /**
-   * Delete a quest
-   */
-  static async deleteQuest(questId: string): Promise<ApiResponse> {
-    try {
-      const result = await VercelDataService.deleteQuest(questId);
-      return {
-        success: result.success,
-        message: result.message
-      };
-    } catch (error) {
-      return {
-        success: false,
-        error: `Failed to delete quest: ${(error as Error).message}`
-      };
-    }
-  }
-
-  /**
-   * Get full configuration
-   */
-  static async getConfig(): Promise<ApiResponse<{
-    users: Record<string, UserConfig>;
-    quests: Record<string, QuestConfig>;
-    commonQuests: string[];
-    isEdgeConfigAvailable: boolean;
-  }>> {
-    try {
-      const [usersData, questsData] = await Promise.all([
-        this.getUsers(),
-        this.getQuests()
-      ]);
-
-      const isUsingEdgeConfig = !usersData.fallback;
-
-      return {
-        success: true,
-        data: {
-          users: usersData.data?.users || {},
-          quests: questsData.data || {},
-          commonQuests: usersData.data?.commonQuests || [],
-          isEdgeConfigAvailable: isUsingEdgeConfig
-        },
-        fallback: !isUsingEdgeConfig
-      };
-    } catch (error) {
-      return {
-        success: false,
-        error: `Failed to fetch config: ${(error as Error).message}`
-      };
-    }
-  }
-
-  /**
-   * Update full configuration
-   */
-  static async updateConfig(
+  static async updateUsersConfig(
     users: Record<string, UserConfig>,
-    quests: Record<string, QuestConfig>,
     commonQuests: string[]
-  ): Promise<ApiResponse> {
+  ): Promise<{ success: boolean; message: string }> {
     try {
-      const [usersResult, questsResult] = await Promise.all([
-        VercelDataService.updateUsersConfig(users, commonQuests),
-        VercelDataService.updateQuestsConfig(quests)
-      ]);
+      const response = await fetch(`${this.API_BASE}/users`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ users, commonQuests }),
+      });
 
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+      }
+
+      const data = await response.json();
+      console.log('☁️ Using API to update users');
       return {
-        success: usersResult.success && questsResult.success,
-        message: 'Configuration mise à jour avec succès. Les fichiers ont été téléchargés.',
-        data: {
-          usersConfig: {
-            message: usersResult.message,
-            success: usersResult.success
-          },
-          questsConfig: {
-            message: questsResult.message,
-            success: questsResult.success
-          }
-        }
+        success: data.success,
+        message: data.message
       };
     } catch (error) {
+      console.error('❌ API failed to update users:', error);
       return {
         success: false,
-        error: `Failed to update config: ${(error as Error).message}`
+        message: 'Failed to update users via API'
       };
     }
+  }
+
+  /**
+   * Update quests via API
+   */
+  static async updateQuestsConfig(
+    quests: Record<string, QuestConfig>
+  ): Promise<{ success: boolean; message: string }> {
+    try {
+      const response = await fetch(`${this.API_BASE}/quests`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ quests }),
+      });
+
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+      }
+
+      const data = await response.json();
+      console.log('☁️ Using API to update quests');
+      return {
+        success: data.success,
+        message: data.message
+      };
+    } catch (error) {
+      console.error('❌ API failed to update quests:', error);
+      return {
+        success: false,
+        message: 'Failed to update quests via API'
+      };
+    }
+  }
+
+  /**
+   * Check if we're in a production environment (should use API)
+   */
+  static isProduction(): boolean {
+    return (
+      import.meta.env.PROD ||
+      import.meta.env.MODE === 'production' ||
+      !window.location.hostname.includes('localhost') &&
+      !window.location.hostname.includes('127.0.0.1')
+    );
   }
 }

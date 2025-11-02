@@ -1,11 +1,12 @@
 import { UserConfig, QuestConfig } from './userManager';
 import { blobStorageStrategy } from './blobStorageStrategy';
 import { LocalStorageFallback } from './localStorageFallback';
+import { ApiService } from './apiService';
 
 /**
- * Service de données Vercel avec fallback LocalStorage
- * Utilise Vercel Blob Store en production, LocalStorage en développement
- * Gère automatiquement les problèmes CORS en mode développement
+ * Service de données Vercel avec API fallback
+ * Utilise API serveur en production, LocalStorage en développement
+ * Évite les problèmes CORS en utilisant des routes API
  */
 
 export class VercelDataService {
@@ -68,19 +69,19 @@ export class VercelDataService {
   }
 
   /**
-   * Check if we should use LocalStorage fallback (for development)
+   * Check if we should use API (production) or LocalStorage (development)
    */
   private static useLocalStorageFallback(): boolean {
-    // Use fallback if we're in development and Blob Store is not accessible
-    return import.meta.env.DEV &&
-           (import.meta.env.VITE_BLOB_READ_WRITE_TOKEN?.startsWith('blob_') === false ||
-            window.location.hostname === 'localhost' ||
-            window.location.hostname === '127.0.0.1');
+    // Use API in production, LocalStorage in development
+    return import.meta.env.DEV && (
+      window.location.hostname === 'localhost' ||
+      window.location.hostname === '127.0.0.1'
+    );
   }
 
   
   /**
-   * Récupère tous les utilisateurs (Blob Store ou LocalStorage fallback)
+   * Récupère tous les utilisateurs (API ou LocalStorage fallback)
    */
   static async getUsers(): Promise<{ users: Record<string, UserConfig>; commonQuests: string[]; isBlobStore: boolean }> {
     try {
@@ -95,18 +96,10 @@ export class VercelDataService {
         };
       }
 
-      // Récupérer depuis Blob Store
-      const blobUsers = await blobStorageStrategy.getUsers();
-      const blobCommonQuests = await blobStorageStrategy.getCommonQuests();
-
-      console.log('☁️ Using Blob Store for users');
-      return {
-        users: blobUsers.data,
-        commonQuests: blobCommonQuests.data,
-        isBlobStore: true
-      };
+      // Récupérer via API (server-side)
+      return await ApiService.getUsers();
     } catch (error) {
-      console.error('❌ Blob Store failed for users, using LocalStorage fallback:', error);
+      console.error('❌ API failed for users, using LocalStorage fallback:', error);
       // Fallback to LocalStorage
       const users = await LocalStorageFallback.getUsers();
       const commonQuests = await LocalStorageFallback.getCommonQuests();
@@ -119,7 +112,7 @@ export class VercelDataService {
   }
 
   /**
-   * Récupère toutes les quêtes (Blob Store ou LocalStorage fallback)
+   * Récupère toutes les quêtes (API ou LocalStorage fallback)
    */
   static async getQuests(): Promise<Record<string, QuestConfig>> {
     try {
@@ -128,19 +121,17 @@ export class VercelDataService {
         return await LocalStorageFallback.getQuests();
       }
 
-      // Récupérer depuis Blob Store
-      const blobQuests = await blobStorageStrategy.getQuests();
-      console.log('☁️ Using Blob Store for quests');
-      return blobQuests.data;
+      // Récupérer via API (server-side)
+      return await ApiService.getQuests();
     } catch (error) {
-      console.error('❌ Blob Store failed for quests, using LocalStorage fallback:', error);
+      console.error('❌ API failed for quests, using LocalStorage fallback:', error);
       // Fallback to LocalStorage
       return await LocalStorageFallback.getQuests();
     }
   }
 
   /**
-   * Vérifie le mot de passe admin (Blob Store ou LocalStorage fallback)
+   * Vérifie le mot de passe admin (API ou LocalStorage fallback)
    */
   static async verifyAdminPassword(password: string): Promise<boolean> {
     try {
@@ -150,12 +141,10 @@ export class VercelDataService {
         return password === localStoragePassword;
       }
 
-      // Récupérer depuis Blob Store
-      const blobPassword = await blobStorageStrategy.getAdminPassword();
-      console.log('☁️ Verifying admin password via Blob Store');
-      return password === blobPassword.data;
+      // Récupérer via API (server-side)
+      return await ApiService.verifyAdminPassword(password);
     } catch (error) {
-      console.error('❌ Blob Store failed for admin password, using LocalStorage fallback:', error);
+      console.error('❌ API failed for admin password, using LocalStorage fallback:', error);
       // Fallback to LocalStorage
       const localStoragePassword = await LocalStorageFallback.getAdminPassword();
       return password === localStoragePassword;
@@ -163,7 +152,7 @@ export class VercelDataService {
   }
 
   /**
-   * Met à jour la configuration des utilisateurs (Blob Store ou LocalStorage fallback)
+   * Met à jour la configuration des utilisateurs (API ou LocalStorage fallback)
    */
   static async updateUsersConfig(
     users: Record<string, UserConfig>,
@@ -185,26 +174,10 @@ export class VercelDataService {
         }
       }
 
-      // Utiliser Blob Store pour mettre à jour directement
-      const success = await blobStorageStrategy.updateUsers(users);
-
-      if (success) {
-        // Mettre à jour les quêtes communes également
-        const fullConfig = await blobStorageStrategy.getFullConfig();
-        if (fullConfig.data) {
-          fullConfig.data.commonQuests = commonQuests;
-          await blobStorageStrategy.updateFullConfig(fullConfig.data);
-        }
-
-        return {
-          success: true,
-          message: 'Configuration des utilisateurs mise à jour avec succès dans Blob Store.'
-        };
-      } else {
-        throw new Error('Blob Store update failed');
-      }
+      // Utiliser API pour mettre à jour (server-side)
+      return await ApiService.updateUsersConfig(users, commonQuests);
     } catch (error) {
-      console.error('❌ Update failed, trying LocalStorage fallback:', error);
+      console.error('❌ API failed to update users, trying LocalStorage fallback:', error);
 
       // Fallback to LocalStorage
       try {
@@ -230,7 +203,7 @@ export class VercelDataService {
 
   
   /**
-   * Met à jour la configuration des quêtes (Blob Store ou LocalStorage fallback)
+   * Met à jour la configuration des quêtes (API ou LocalStorage fallback)
    */
   static async updateQuestsConfig(
     quests: Record<string, QuestConfig>
@@ -250,19 +223,10 @@ export class VercelDataService {
         }
       }
 
-      // Utiliser Blob Store pour mettre à jour directement
-      const success = await blobStorageStrategy.updateQuests(quests);
-
-      if (success) {
-        return {
-          success: true,
-          message: 'Configuration des quêtes mise à jour avec succès dans Blob Store.'
-        };
-      } else {
-        throw new Error('Blob Store update failed');
-      }
+      // Utiliser API pour mettre à jour (server-side)
+      return await ApiService.updateQuestsConfig(quests);
     } catch (error) {
-      console.error('❌ Quest update failed, trying LocalStorage fallback:', error);
+      console.error('❌ API failed to update quests, trying LocalStorage fallback:', error);
 
       // Fallback to LocalStorage
       try {
