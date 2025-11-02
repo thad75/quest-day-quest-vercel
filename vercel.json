@@ -1,10 +1,10 @@
 {
   "functions": {
     "api/**/*.js": {
-      "runtime": "nodejs"
+      "runtime": "nodejs22.x"
     },
     "api/**/*.ts": {
-      "runtime": "nodejs"
+      "runtime": "nodejs22.x"
     }
   },
   "buildCommand": "npm run build",
