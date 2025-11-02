@@ -1,7 +1,15 @@
 import { createClient } from '@vercel/edge-config';
 
 // Edge Config client for Vercel Storage
-const edgeConfig = createClient('ecfg_puwsypw5sv3zviw427nirgf4clyg');
+// Note: The connection string only works on Vercel, not locally
+let edgeConfig: ReturnType<typeof createClient> | null = null;
+
+try {
+  edgeConfig = createClient('ecfg_puwsypw5sv3zviw427nirgf4clyg');
+} catch (error) {
+  console.log('Edge Config non disponible en local, utilisera fallback');
+  edgeConfig = null;
+}
 
 export interface EdgeConfigData {
   users: Record<string, any>;
@@ -17,6 +25,11 @@ export class EdgeConfigManager {
    * Get all users from Edge Config
    */
   static async getUsers(): Promise<Record<string, any>> {
+    if (!edgeConfig) {
+      console.log('Edge Config non disponible');
+      return {};
+    }
+
     try {
       const users = await edgeConfig.get('users');
       return users || {};
@@ -132,6 +145,10 @@ export class EdgeConfigManager {
    * Check if Edge Config is available
    */
   static async isAvailable(): Promise<boolean> {
+    if (!edgeConfig) {
+      return false;
+    }
+
     try {
       const test = await edgeConfig.get('test');
       return true;

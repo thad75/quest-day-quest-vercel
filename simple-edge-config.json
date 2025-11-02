@@ -1,0 +1,59 @@
+{
+  "users": {
+    "tharsan": {
+      "id": "tharsan",
+      "name": "Tharsan",
+      "avatar": "🦸",
+      "dailyQuests": ["1", "2", "3"],
+      "preferences": {
+        "categories": ["santé", "apprentissage"],
+        "difficulty": "facile",
+        "questCount": 3,
+        "allowCommonQuests": true
+      },
+      "stats": {
+        "totalXP": 0,
+        "currentLevel": 1,
+        "currentXP": 0,
+        "xpToNextLevel": 100,
+        "questsCompleted": 0,
+        "totalQuestsCompleted": 0,
+        "currentStreak": 0,
+        "longestStreak": 0
+      }
+    }
+  },
+  "quests": {
+    "1": {
+      "id": "1",
+      "title": "Boire 2L d'eau",
+      "description": "Boire 2 litres d'eau au cours de la journée",
+      "category": "santé",
+      "xp": 10,
+      "difficulty": "facile",
+      "icon": "💧"
+    },
+    "2": {
+      "id": "2",
+      "title": "Lire 30 minutes",
+      "description": "Lire un livre ou des articles pendant 30 minutes",
+      "category": "apprentissage",
+      "xp": 15,
+      "difficulty": "facile",
+      "icon": "📚"
+    },
+    "3": {
+      "id": "3",
+      "title": "Méditer 10 minutes",
+      "description": "Faire une session de méditation de 10 minutes",
+      "category": "santé",
+      "xp": 12,
+      "difficulty": "facile",
+      "icon": "🧘"
+    }
+  },
+  "commonQuests": ["1", "2"],
+  "adminPassword": "admin123",
+  "lastUpdated": "2025-01-02T00:00:00.000Z",
+  "version": "1.0"
+}
