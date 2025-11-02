@@ -1,0 +1,175 @@
+{
+  "users": {
+    "thars": {
+      "id": "thars",
+      "name": "Thars",
+      "avatar": "🦸",
+      "dailyQuests": ["1", "3", "4", "6", "11"],
+      "preferences": {
+        "categories": ["santé", "fitness", "apprentissage", "organisation"],
+        "difficulty": "moyen",
+        "questCount": 5,
+        "allowCommonQuests": true
+      },
+      "stats": {
+        "totalXP": 150,
+        "currentLevel": 2,
+        "currentXP": 50,
+        "xpToNextLevel": 200,
+        "currentStreak": 3,
+        "longestStreak": 5,
+        "totalQuestsCompleted": 12,
+        "questsCompleted": 8
+      }
+    },
+    "marie": {
+      "id": "marie",
+      "name": "Marie",
+      "avatar": "👩‍💼",
+      "dailyQuests": ["2", "7", "8", "10", "12"],
+      "preferences": {
+        "categories": ["santé", "social", "personnel"],
+        "difficulty": "facile",
+        "questCount": 5,
+        "allowCommonQuests": true
+      },
+      "stats": {
+        "totalXP": 85,
+        "currentLevel": 1,
+        "currentXP": 85,
+        "xpToNextLevel": 100,
+        "currentStreak": 5,
+        "longestStreak": 7,
+        "totalQuestsCompleted": 8,
+        "questsCompleted": 3
+      }
+    },
+    "alex": {
+      "id": "alex",
+      "name": "Alex",
+      "avatar": "🎨",
+      "dailyQuests": ["4", "5", "9", "14", "15"],
+      "preferences": {
+        "categories": ["apprentissage", "personnel"],
+        "difficulty": "moyen",
+        "questCount": 5,
+        "allowCommonQuests": true
+      },
+      "stats": {
+        "totalXP": 120,
+        "currentLevel": 2,
+        "currentXP": 20,
+        "xpToNextLevel": 200,
+        "currentStreak": 2,
+        "longestStreak": 4,
+        "totalQuestsCompleted": 11,
+        "questsCompleted": 5
+      }
+    },
+    "sophie": {
+      "id": "sophie",
+      "name": "Sophie",
+      "avatar": "💪",
+      "dailyQuests": ["3", "6", "10", "13", "2"],
+      "preferences": {
+        "categories": ["fitness", "organisation", "santé"],
+        "difficulty": "facile",
+        "questCount": 5,
+        "allowCommonQuests": true
+      },
+      "stats": {
+        "totalXP": 95,
+        "currentLevel": 1,
+        "currentXP": 95,
+        "xpToNextLevel": 100,
+        "currentStreak": 4,
+        "longestStreak": 6,
+        "totalQuestsCompleted": 9,
+        "questsCompleted": 4
+      }
+    },
+    "lucas": {
+      "id": "lucas",
+      "name": "Lucas",
+      "avatar": "📚",
+      "dailyQuests": ["4", "5", "9", "11", "15"],
+      "preferences": {
+        "categories": ["apprentissage", "organisation"],
+        "difficulty": "moyen",
+        "questCount": 5,
+        "allowCommonQuests": true
+      },
+      "stats": {
+        "totalXP": 110,
+        "currentLevel": 2,
+        "currentXP": 10,
+        "xpToNextLevel": 200,
+        "currentStreak": 1,
+        "longestStreak": 3,
+        "totalQuestsCompleted": 11,
+        "questsCompleted": 6
+      }
+    }
+  },
+  "quests": {
+    "1": {
+      "id": "1",
+      "title": "Boire 2L d'eau",
+      "description": "Boire 2 litres d'eau au cours de la journée",
+      "category": "santé",
+      "xp": 10,
+      "difficulty": "facile",
+      "icon": "💧",
+      "tags": ["hydratation", "santé"],
+      "requirements": []
+    },
+    "2": {
+      "id": "2",
+      "title": "Lire 30 minutes",
+      "description": "Lire un livre ou des articles pendant 30 minutes",
+      "category": "apprentissage",
+      "xp": 15,
+      "difficulty": "facile",
+      "icon": "📚",
+      "tags": ["lecture", "apprentissage"],
+      "requirements": []
+    },
+    "3": {
+      "id": "3",
+      "title": "Méditer 10 minutes",
+      "description": "Faire une session de méditation de 10 minutes",
+      "category": "santé",
+      "xp": 12,
+      "difficulty": "facile",
+      "icon": "🧘",
+      "tags": ["méditation", "santé mentale"],
+      "requirements": []
+    },
+    "4": {
+      "id": "4",
+      "title": "Faire du sport 20 minutes",
+      "description": "Faire une activité physique pendant 20 minutes",
+      "category": "fitness",
+      "xp": 20,
+      "difficulty": "moyen",
+      "icon": "🏃",
+      "tags": ["sport", "fitness"],
+      "requirements": []
+    },
+    "5": {
+      "id": "5",
+      "title": "Écrire 500 mots",
+      "description": "Écrire 500 mots sur un sujet de votre choix",
+      "category": "personnel",
+      "xp": 18,
+      "difficulty": "moyen",
+      "icon": "✍️",
+      "tags": ["écriture", "créativité"],
+      "requirements": []
+    }
+  },
+  "commonQuests": ["1", "2", "10"],
+  "adminPassword": "admin123",
+  "lastUpdated": "2025-01-01T00:00:00.000Z",
+  "version": "1.0"
+}

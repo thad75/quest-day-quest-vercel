@@ -1,7 +1,7 @@
 import { createClient } from '@vercel/edge-config';
 
 // Edge Config client for Vercel Storage
-const edgeConfig = createClient(process.env.EDGE_CONFIG || '');
+const edgeConfig = createClient('ecfg_puwsypw5sv3zviw427nirgf4clyg');
 
 export interface EdgeConfigData {
   users: Record<string, any>;

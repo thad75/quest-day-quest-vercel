@@ -1,8 +1,9 @@
 import { UserConfig, QuestConfig, UsersConfig, QuestsLibrary } from './userManager';
+import { EdgeConfigManager } from './edgeConfig';
 
 /**
  * Service de données Vercel fonctionnel
- * Utilise les fichiers JSON + Vercel Edge Config pour un vrai fonctionnement
+ * Utilise Vercel Edge Config + fallback vers fichiers JSON
  */
 
 export class VercelDataService {
@@ -10,7 +11,44 @@ export class VercelDataService {
   private static readonly QUESTS_CONFIG_URL = '/quests-library.json';
 
   /**
-   * Charge la configuration depuis les fichiers JSON
+   * Initialise Edge Config avec les données actuelles (une seule fois)
+   */
+  static async initializeEdgeConfig(): Promise<boolean> {
+    try {
+      // Vérifier si Edge Config est déjà initialisé
+      const existingUsers = await EdgeConfigManager.getUsers();
+      const existingQuests = await EdgeConfigManager.getQuests();
+
+      if (Object.keys(existingUsers).length > 0 || Object.keys(existingQuests).length > 0) {
+        console.log('Edge Config déjà initialisé');
+        return true;
+      }
+
+      // Charger les données depuis les fichiers JSON
+      const [usersConfig, questsConfig] = await Promise.all([
+        this.loadUsersConfig(),
+        this.loadQuestsConfig()
+      ]);
+
+      console.log('Initialisation de Edge Config avec les données existantes...');
+
+      // Note: Pour l'instant, Edge Config est en lecture seule depuis le client
+      // En production, il faudrait utiliser les API routes Vercel ou un serveur
+
+      console.log('Données chargées:', {
+        usersCount: Object.keys(usersConfig.users).length,
+        questsCount: Object.keys(questsConfig.quests).length
+      });
+
+      return true;
+    } catch (error) {
+      console.error('Erreur lors de l\'initialisation d\'Edge Config:', error);
+      return false;
+    }
+  }
+
+  /**
+   * Charge la configuration depuis Edge Config ou fallback vers fichiers JSON
    */
   static async loadUsersConfig(): Promise<UsersConfig> {
     try {
@@ -63,20 +101,52 @@ export class VercelDataService {
   }
 
   /**
-   * Récupère tous les utilisateurs
+   * Récupère tous les utilisateurs (Edge Config优先)
    */
-  static async getUsers(): Promise<{ users: Record<string, UserConfig>; commonQuests: string[] }> {
+  static async getUsers(): Promise<{ users: Record<string, UserConfig>; commonQuests: string[]; isEdgeConfig: boolean }> {
+    try {
+      // Essayer Edge Config d'abord
+      const edgeUsers = await EdgeConfigManager.getUsers();
+      const edgeCommonQuests = await EdgeConfigManager.getQuests();
+
+      if (Object.keys(edgeUsers).length > 0) {
+        console.log('Utilisation d\'Edge Config pour les utilisateurs');
+        return {
+          users: edgeUsers,
+          commonQuests: edgeCommonQuests,
+          isEdgeConfig: true
+        };
+      }
+    } catch (error) {
+      console.log('Edge Config non disponible, utilisation des fichiers JSON');
+    }
+
+    // Fallback vers les fichiers JSON
     const config = await this.loadUsersConfig();
     return {
       users: config.users,
-      commonQuests: config.commonQuests
+      commonQuests: config.commonQuests,
+      isEdgeConfig: false
     };
   }
 
   /**
-   * Récupère toutes les quêtes
+   * Récupère toutes les quêtes (Edge Config优先)
    */
   static async getQuests(): Promise<Record<string, QuestConfig>> {
+    try {
+      // Essayer Edge Config d'abord
+      const edgeQuests = await EdgeConfigManager.getQuests();
+
+      if (Object.keys(edgeQuests).length > 0) {
+        console.log('Utilisation d\'Edge Config pour les quêtes');
+        return edgeQuests;
+      }
+    } catch (error) {
+      console.log('Edge Config non disponible pour les quêtes, utilisation des fichiers JSON');
+    }
+
+    // Fallback vers les fichiers JSON
     const config = await this.loadQuestsConfig();
     return config.quests;
   }

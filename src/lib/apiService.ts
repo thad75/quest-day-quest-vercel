@@ -27,8 +27,11 @@ export class ApiService {
       const data = await VercelDataService.getUsers();
       return {
         success: true,
-        data,
-        fallback: true // Indique qu'on utilise les fichiers locaux
+        data: {
+          users: data.users,
+          commonQuests: data.commonQuests
+        },
+        fallback: !data.isEdgeConfig // Indique si on utilise le fallback
       };
     } catch (error) {
       return {
@@ -186,15 +189,17 @@ export class ApiService {
         this.getQuests()
       ]);
 
+      const isUsingEdgeConfig = !usersData.fallback;
+
       return {
         success: true,
         data: {
           users: usersData.data?.users || {},
           quests: questsData.data || {},
           commonQuests: usersData.data?.commonQuests || [],
-          isEdgeConfigAvailable: false // Pour l'instant, on utilise les fichiers locaux
+          isEdgeConfigAvailable: isUsingEdgeConfig
         },
-        fallback: true
+        fallback: !isUsingEdgeConfig
       };
     } catch (error) {
       return {
