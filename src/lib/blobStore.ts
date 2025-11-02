@@ -30,6 +30,7 @@ export class BlobStoreManager {
   private blobToken: string;
   private primaryPath: string;
   private backupPath: string;
+  private primaryUrl: string | null = null;
   private metrics: BlobStoreMetrics;
   private errorHistory: BlobStoreError[] = [];
 
@@ -82,7 +83,21 @@ export class BlobStoreManager {
         return null;
       }
 
-      const response = await fetch(this.primaryPath);
+      // List blobs to find our main config file
+      const { blobs } = await list({
+        token: this.blobToken,
+        prefix: this.primaryPath
+      });
+
+      const mainConfigBlob = blobs.find(blob => blob.pathname === this.primaryPath);
+
+      if (!mainConfigBlob) {
+        console.log('Main config file not found in Blob Store - will create on first write');
+        return null;
+      }
+
+      // Fetch the configuration from the blob URL
+      const response = await fetch(mainConfigBlob.url);
       if (!response.ok) {
         throw new Error(`HTTP ${response.status}: ${response.statusText}`);
       }
@@ -90,10 +105,12 @@ export class BlobStoreManager {
       const config = await response.json();
       this.metrics.successfulOperations++;
       this.metrics.lastUpdated = new Date().toISOString();
+      this.primaryUrl = mainConfigBlob.url;
 
       // Update storage size
       this.metrics.storageSize = JSON.stringify(config).length;
 
+      console.log('✅ Configuration loaded successfully from Blob Store');
       return config;
     } catch (error) {
       this.metrics.failedOperations++;
@@ -380,8 +397,12 @@ export class BlobStoreManager {
    */
   private async blobExists(path: string): Promise<boolean> {
     try {
-      await head({ url: path, token: this.blobToken });
-      return true;
+      const { blobs } = await list({
+        token: this.blobToken,
+        prefix: path
+      });
+
+      return blobs.some(blob => blob.pathname === path);
     } catch (error) {
       return false;
     }
