@@ -7,7 +7,11 @@ import { get, has, getAll, clone, createClient } from '@vercel/edge-config';
 let edgeConfigClient: ReturnType<typeof createClient> | null = null;
 
 try {
-  edgeConfigClient = createClient('ecfg_puwsypw5sv3zviw427nirgf4clyg');
+  const connectionString = process.env.EDGE_CONFIG;
+  if (!connectionString) {
+    throw new Error('EDGE_CONFIG environment variable is not set');
+  }
+  edgeConfigClient = createClient(connectionString);
   console.log('Client Edge Config créé avec succès');
 } catch (error) {
   console.log('Client Edge Config non disponible (normal en local):', error.message);

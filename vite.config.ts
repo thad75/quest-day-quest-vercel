@@ -15,4 +15,7 @@ export default defineConfig(({ mode }) => ({
       "@": path.resolve(__dirname, "./src"),
     },
   },
+  define: {
+    'process.env.EDGE_CONFIG': JSON.stringify(process.env.EDGE_CONFIG)
+  }
 }));
