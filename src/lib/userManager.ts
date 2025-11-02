@@ -55,11 +55,41 @@ class UserManager {
       const usersResponse = await fetch('/users-config.json');
       const questsResponse = await fetch('/quests-library.json');
 
+      if (!usersResponse.ok || !questsResponse.ok) {
+        console.warn('Impossible de charger les fichiers de configuration, utilisation des données par défaut');
+        // Configuration par défaut si les fichiers ne sont pas accessibles
+        this.usersConfig = {
+          users: {},
+          commonQuests: [],
+          adminPassword: 'admin123',
+          lastUpdated: new Date().toISOString(),
+          version: '1.0'
+        };
+        this.questsLibrary = {
+          quests: {},
+          lastUpdated: new Date().toISOString(),
+          version: '1.0'
+        };
+        return;
+      }
+
       this.usersConfig = await usersResponse.json();
       this.questsLibrary = await questsResponse.json();
     } catch (error) {
       console.error('Erreur lors du chargement des configurations:', error);
-      throw new Error('Impossible de charger les configurations');
+      // Configuration par défaut en cas d'erreur
+      this.usersConfig = {
+        users: {},
+        commonQuests: [],
+        adminPassword: 'admin123',
+        lastUpdated: new Date().toISOString(),
+        version: '1.0'
+      };
+      this.questsLibrary = {
+        quests: {},
+        lastUpdated: new Date().toISOString(),
+        version: '1.0'
+      };
     }
   }
 
@@ -146,7 +176,9 @@ class UserManager {
 
   verifyAdminPassword(password: string): boolean {
     if (!this.usersConfig) {
-      return false;
+      // Fallback: si la configuration n'est pas chargée, utiliser le mot de passe par défaut
+      console.warn('Configuration non chargée, utilisation du mot de passe par défaut');
+      return password === 'admin123';
     }
     return password === this.usersConfig.adminPassword;
   }
