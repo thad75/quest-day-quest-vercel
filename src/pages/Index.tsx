@@ -5,7 +5,7 @@ import { CelebrationAnimation } from "@/components/CelebrationAnimation";
 import { EnhancedQuestView } from "@/components/EnhancedQuestView";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
-import { Gamepad2, User } from "lucide-react";
+import { Gamepad2, User, Sparkles, Clock } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { getAvatarEmoji } from "@/components/ProfileEditor";
 import QuestManager from "@/lib/quest-manager";
@@ -145,70 +145,140 @@ const Index = () => {
   };
 
   return (
-    <div className="min-h-screen bg-background">
-      <div className="container max-w-4xl mx-auto p-6 space-y-8">
-        {/* Header */}
-        <div className="flex items-center justify-between pt-8">
-          <div className="text-center flex-1 space-y-2">
-            <div className="flex items-center justify-center gap-3 mb-4">
-              <Gamepad2 className="h-10 w-10 text-primary" />
-              <h1 className="text-4xl font-bold bg-[var(--gradient-level)] bg-clip-text text-transparent">
-                Quêtes Quotidiennes
-              </h1>
-            </div>
-            <p className="text-muted-foreground">
-              Bonjour {username} ! Complète tes quêtes et gagne de l'XP pour monter de niveau !
-            </p>
-          </div>
+    <div className="min-h-screen bg-gradient-to-br from-background via-background to-background/95">
+      {/* Background decoration */}
+      <div className="fixed inset-0 overflow-hidden pointer-events-none">
+        <div className="absolute -top-40 -right-40 w-80 h-80 bg-primary/10 rounded-full blur-3xl" />
+        <div className="absolute -bottom-40 -left-40 w-80 h-80 bg-secondary/10 rounded-full blur-3xl" />
+        <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-96 h-96 bg-accent/5 rounded-full blur-3xl" />
+      </div>
 
-          {/* Profile Button */}
-          <Button
-            variant="outline"
-            size="icon"
-            onClick={() => navigate("/profile")}
-            className="h-12 w-12 rounded-full border-2 border-primary/20 hover:border-primary/40 hover:bg-primary/10 transition-all duration-300"
-          >
-            <span className="text-2xl">{getAvatarEmoji(avatar)}</span>
-          </Button>
-        </div>
+      <div className="container max-w-6xl mx-auto p-6 space-y-8 relative">
+        {/* Header */}
+        <header className="relative">
+          <div className="backdrop-blur-xl bg-card/30 rounded-3xl border border-border/50 shadow-[var(--shadow-card)] p-8">
+            <div className="flex items-center justify-between">
+              <div className="flex-1 space-y-4">
+                <div className="flex items-center gap-4">
+                  <div className="relative">
+                    <div className="absolute inset-0 bg-[var(--gradient-level)] rounded-2xl blur-lg opacity-50 animate-pulse" />
+                    <div className="relative p-3 rounded-2xl bg-[var(--gradient-level)] shadow-[var(--shadow-glow)]">
+                      <Gamepad2 className="h-12 w-12 text-primary-foreground" />
+                    </div>
+                  </div>
+                  <div>
+                    <h1 className="text-5xl font-black bg-[var(--gradient-level)] bg-clip-text text-transparent leading-tight">
+                      Quêtes Quotidiennes
+                    </h1>
+                    <p className="text-xl text-muted-foreground mt-2">
+                      Bonjour <span className="font-semibold text-primary">{username}</span> !
+                    </p>
+                    <p className="text-lg text-muted-foreground/80">
+                      Complète tes quêtes et deviens un véritable héros ! ⚔️
+                    </p>
+                  </div>
+                </div>
+
+                {/* Stats rapides */}
+                <div className="flex gap-4 pt-2">
+                  <div className="px-4 py-2 rounded-xl bg-primary/10 border border-primary/20">
+                    <p className="text-xs text-primary/80">Niveau</p>
+                    <p className="text-lg font-bold text-primary">{progress.currentLevel}</p>
+                  </div>
+                  <div className="px-4 py-2 rounded-xl bg-accent/10 border border-accent/20">
+                    <p className="text-xs text-accent/80">XP Totale</p>
+                    <p className="text-lg font-bold text-accent">{profile.totalXP}</p>
+                  </div>
+                  <div className="px-4 py-2 rounded-xl bg-secondary/10 border border-secondary/20">
+                    <p className="text-xs text-secondary/80">Quêtes</p>
+                    <p className="text-lg font-bold text-secondary">{profile.totalQuestsCompleted}</p>
+                  </div>
+                  <div className="px-4 py-2 rounded-xl bg-orange-500/10 border border-orange-500/20">
+                    <p className="text-xs text-orange-500/80">🔥 Streak</p>
+                    <p className="text-lg font-bold text-orange-500">{profile.currentStreak}</p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Profile Button */}
+              <Button
+                variant="outline"
+                size="lg"
+                onClick={() => navigate("/profile")}
+                className="h-16 w-16 rounded-2xl border-2 border-primary/30 hover:border-primary/60 hover:bg-primary/20 transition-all duration-300 shadow-[var(--shadow-glow)] hover:scale-105"
+              >
+                <span className="text-3xl">{getAvatarEmoji(avatar)}</span>
+              </Button>
+            </div>
+          </div>
+        </header>
 
         {/* Progress */}
         <ProgressBar progress={progress} />
 
         {/* Enhanced Quest System */}
-        <div className="space-y-6">
+        <section className="space-y-8">
           <div className="flex items-center justify-between">
-            <h2 className="text-2xl font-bold">Quêtes Multi-Granularité</h2>
-            <div className="flex items-center gap-2">
+            <div className="space-y-2">
+              <h2 className="text-3xl font-bold bg-gradient-to-r from-primary to-secondary bg-clip-text text-transparent">
+                Missions & Quêtes
+              </h2>
+              <p className="text-muted-foreground">
+                Relevez des défis épiques pour progresser dans votre aventure !
+              </p>
+            </div>
+            <div className="flex items-center gap-3">
               <Button
                 variant={useEnhancedSystem ? "default" : "outline"}
-                size="sm"
+                size="lg"
                 onClick={() => setUseEnhancedSystem(true)}
+                className="rounded-xl px-6 py-3 font-semibold transition-all duration-300 hover:scale-105"
               >
+                <Sparkles className="h-4 w-4 mr-2" />
                 Nouveau système
               </Button>
               <Button
                 variant={!useEnhancedSystem ? "default" : "outline"}
-                size="sm"
+                size="lg"
                 onClick={() => setUseEnhancedSystem(false)}
+                className="rounded-xl px-6 py-3 font-semibold transition-all duration-300 hover:scale-105"
               >
+                <Clock className="h-4 w-4 mr-2" />
                 Ancien système
               </Button>
             </div>
           </div>
 
-          {useEnhancedSystem ? (
-            <EnhancedQuestView
-              profile={profile}
-              onProgressUpdate={handleProgressUpdate}
-            />
-          ) : (
-            <div className="text-center py-8 text-muted-foreground">
-              <p>Ancien système désactivé</p>
-              <p className="text-sm">Utilisez le nouveau système multi-granularité</p>
-            </div>
-          )}
-        </div>
+          <div className="backdrop-blur-xl bg-card/20 rounded-3xl border border-border/30 shadow-[var(--shadow-card)] p-8">
+            {useEnhancedSystem ? (
+              <EnhancedQuestView
+                profile={profile}
+                onProgressUpdate={handleProgressUpdate}
+              />
+            ) : (
+              <div className="text-center py-16 space-y-4">
+                <div className="mx-auto w-24 h-24 rounded-2xl bg-muted/50 flex items-center justify-center">
+                  <Clock className="h-12 w-12 text-muted-foreground" />
+                </div>
+                <h3 className="text-2xl font-bold text-muted-foreground">
+                  Ancien système désactivé
+                </h3>
+                <p className="text-lg text-muted-foreground/80 max-w-md mx-auto">
+                  Découvrez le nouveau système multi-granularité avec des quêtes quotidiennes,
+                  hebdomadaires, mensuelles et spéciales !
+                </p>
+                <Button
+                  onClick={() => setUseEnhancedSystem(true)}
+                  size="lg"
+                  className="rounded-xl px-8 py-4 font-semibold bg-gradient-to-r from-primary to-secondary hover:scale-105 transition-all duration-300"
+                >
+                  <Sparkles className="h-5 w-5 mr-2" />
+                  Essayer le nouveau système
+                </Button>
+              </div>
+            )}
+          </div>
+        </section>
       </div>
 
       {/* Celebration Animation */}

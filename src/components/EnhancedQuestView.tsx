@@ -168,80 +168,118 @@ export const EnhancedQuestView = ({ profile, onProgressUpdate }: EnhancedQuestVi
     return (
       <Card
         key={quest.id}
-        className={`relative overflow-hidden transition-all duration-300 hover:scale-[1.02] ${
+        className={`group relative overflow-hidden transition-all duration-500 hover:scale-[1.03] hover:shadow-[var(--shadow-glow)] ${
           quest.completed
-            ? 'bg-success/20 border-success'
-            : 'bg-card/50 backdrop-blur-sm border-primary/20'
-        } shadow-[0_8px_32px_hsl(0_0%_0%_/_0.4)]`}
+            ? 'bg-gradient-to-br from-success/10 to-success/5 border-success/50 backdrop-blur-sm'
+            : 'bg-gradient-to-br from-card/80 to-card/40 backdrop-blur-md border-border/50 hover:border-primary/30'
+        } shadow-[0_8px_32px_hsl(0_0%_0%_/_0.3)] rounded-2xl`}
       >
-        <CardContent className="p-4">
-          <div className="flex items-start gap-3">
+        {/* Background decoration */}
+        <div className={`absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-500 ${
+          quest.completed
+            ? 'bg-gradient-to-br from-success/20 to-transparent'
+            : 'bg-gradient-to-br from-primary/10 to-transparent'
+        }`} />
+
+        {/* XP Glow effect */}
+        <div className="absolute top-2 right-2">
+          <div className={`relative ${quest.completed ? 'opacity-50' : ''}`}>
+            <div className="absolute inset-0 bg-yellow-400/20 rounded-full blur-lg animate-pulse" />
+            <div className="relative px-2 py-1 rounded-full bg-yellow-500/20 backdrop-blur-sm border border-yellow-500/30">
+              <div className="flex items-center gap-1">
+                <Star className="h-3 w-3 fill-yellow-400 text-yellow-400" />
+                <span className="text-xs font-bold text-yellow-600">
+                  {quest.xp}
+                </span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <CardContent className="p-6 relative">
+          <div className="flex items-start gap-4">
             <Button
               variant="ghost"
               size="icon"
               onClick={() => handleToggleQuest(quest.id)}
-              className={`h-8 w-8 rounded-full transition-all duration-300 flex-shrink-0 ${
+              className={`h-10 w-10 rounded-xl transition-all duration-300 flex-shrink-0 group-hover:scale-110 ${
                 quest.completed
-                  ? 'bg-success text-success-foreground hover:bg-success/80'
-                  : 'border-2 border-primary hover:bg-primary/20'
-              }`}
+                  ? 'bg-success/20 text-success border-2 border-success/50 hover:bg-success/30 hover:scale-110'
+                  : 'border-2 border-primary/40 hover:border-primary hover:bg-primary/20 hover:scale-110'
+              } shadow-lg`}
             >
-              <IconComponent className="h-4 w-4" />
+              <IconComponent className="h-5 w-5" />
             </Button>
 
-            <div className="flex-1 min-w-0">
-              <div className="flex items-start justify-between gap-2 mb-2">
-                <h3 className={`font-medium text-sm leading-tight ${
-                  quest.completed ? 'line-through opacity-60' : ''
+            <div className="flex-1 min-w-0 space-y-3">
+              <div className="flex items-start justify-between gap-3">
+                <h3 className={`font-semibold text-base leading-tight transition-all duration-300 ${
+                  quest.completed
+                    ? 'line-through opacity-60 text-muted-foreground'
+                    : 'text-foreground group-hover:text-primary'
                 }`}>
                   {quest.title}
                 </h3>
-                <div className="flex items-center gap-1 flex-shrink-0">
-                  <Badge className={`text-xs px-2 py-0.5 ${getDifficultyColor(quest.difficulty)}`}>
+                <div className="flex items-center gap-2 flex-shrink-0">
+                  <Badge className={`text-xs px-3 py-1 rounded-full font-medium ${getDifficultyColor(quest.difficulty)} shadow-sm`}>
                     {getDifficultyLabel(quest.difficulty)}
                   </Badge>
-                </div>
-              </div>
-
-              {quest.description && (
-                <p className={`text-xs text-muted-foreground mb-2 ${
-                  quest.completed ? 'line-through opacity-60' : ''
-                }`}>
-                  {quest.description}
-                </p>
-              )}
-
-              <div className="flex items-center justify-between gap-2">
-                <div className="flex items-center gap-2">
-                  <span className="text-lg">{getCategoryIcon(quest.category)}</span>
-                  <Badge variant="outline" className="text-xs capitalize">
-                    {quest.category}
-                  </Badge>
-                </div>
-
-                <div className="flex items-center gap-1">
-                  <Star className="h-4 w-4 fill-yellow-400 text-yellow-400" />
-                  <span className="text-sm font-bold text-yellow-600">
-                    {quest.xp} XP
-                  </span>
                   {quest.bonusXP && (
-                    <Badge className="text-xs bg-yellow-100 text-yellow-800">
-                      +{quest.bonusXP}
+                    <Badge className="text-xs px-2 py-1 rounded-full bg-gradient-to-r from-yellow-500 to-orange-500 text-white font-bold shadow-lg animate-pulse">
+                      +{quest.bonusXP} 🔥
                     </Badge>
                   )}
                 </div>
               </div>
 
-              {quest.timeLimit && (
-                <div className="flex items-center gap-1 mt-2">
-                  <Clock className="h-3 w-3 text-muted-foreground" />
-                  <span className="text-xs text-muted-foreground">
-                    {quest.timeLimit}h max
-                  </span>
-                </div>
+              {quest.description && (
+                <p className={`text-sm leading-relaxed transition-all duration-300 ${
+                  quest.completed
+                    ? 'line-through opacity-50 text-muted-foreground'
+                    : 'text-muted-foreground/80 group-hover:text-muted-foreground'
+                }`}>
+                  {quest.description}
+                </p>
               )}
+
+              <div className="flex items-center justify-between gap-4">
+                <div className="flex items-center gap-3">
+                  <div className={`text-2xl transition-transform duration-300 group-hover:scale-125 ${
+                    quest.completed ? 'grayscale opacity-50' : ''
+                  }`}>
+                    {getCategoryIcon(quest.category)}
+                  </div>
+                  <Badge
+                    variant="outline"
+                    className="text-xs px-3 py-1 rounded-full capitalize border-current/30 font-medium"
+                  >
+                    {quest.category}
+                  </Badge>
+                </div>
+
+                {quest.timeLimit && (
+                  <div className="flex items-center gap-2 text-xs text-muted-foreground/70">
+                    <Clock className="h-3 w-3" />
+                    <span>{quest.timeLimit}h max</span>
+                  </div>
+                )}
+              </div>
             </div>
           </div>
+
+          {/* Progress indicator for partial completion */}
+          {quest.progress !== undefined && quest.progress > 0 && quest.progress < 100 && (
+            <div className="mt-4 space-y-2">
+              <div className="flex justify-between text-xs">
+                <span className="text-muted-foreground">Progression</span>
+                <span className="font-medium text-primary">{quest.progress}%</span>
+              </div>
+              <Progress
+                value={quest.progress}
+                className="h-2 bg-muted/50"
+              />
+            </div>
+          )}
         </CardContent>
       </Card>
     );
@@ -332,20 +370,49 @@ export const EnhancedQuestView = ({ profile, onProgressUpdate }: EnhancedQuestVi
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-8">
       {/* Overview Stats */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
         {Object.entries(GRANULARITY_CONFIG).map(([key, config]) => {
           const quests = questState?.[`${key}Quests` as keyof DailyQuestState] as Quest[] || [];
           const stats = getCompletionStats(quests);
 
           return (
-            <Card key={key} className={`${config.bgColor} ${config.borderColor} border`}>
-              <CardContent className="p-4 text-center">
-                <config.icon className={`h-6 w-6 ${config.color} mx-auto mb-2`} />
-                <div className="text-2xl font-bold">{stats.completed}</div>
-                <div className="text-xs text-muted-foreground">{stats.label}</div>
-                <Progress value={stats.percentage} className="mt-2 h-1" />
+            <Card
+              key={key}
+              className={`group relative overflow-hidden transition-all duration-300 hover:scale-[1.02] hover:shadow-lg ${
+                stats.completed === stats.total && stats.total > 0
+                  ? 'bg-gradient-to-br from-success/10 to-success/5 border-success/50 shadow-success/20'
+                  : `${config.bgColor} ${config.borderColor} hover:border-current/30`
+              }`}
+            >
+              {/* Background decoration */}
+              <div className="absolute inset-0 bg-gradient-to-br from-transparent to-current/5 opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+
+              <CardContent className="p-6 text-center relative">
+                <div className="flex items-center justify-center mb-3">
+                  <div className={`p-3 rounded-xl ${config.bgColor} group-hover:scale-110 transition-transform duration-300`}>
+                    <config.icon className={`h-6 w-6 ${config.color}`} />
+                  </div>
+                  {stats.completed === stats.total && stats.total > 0 && (
+                    <div className="absolute -top-1 -right-1">
+                      <Trophy className="h-4 w-4 text-success animate-bounce" />
+                    </div>
+                  )}
+                </div>
+
+                <div className="space-y-2">
+                  <div className="text-3xl font-bold bg-gradient-to-r from-foreground to-muted-foreground bg-clip-text text-transparent">
+                    {stats.completed}
+                  </div>
+                  <div className="text-sm text-muted-foreground">{config.label}</div>
+                  <div className="text-xs text-primary font-medium">{Math.round(stats.percentage)}%</div>
+                </div>
+
+                <Progress
+                  value={stats.percentage}
+                  className="mt-3 h-2 bg-muted/50"
+                />
               </CardContent>
             </Card>
           );
@@ -354,21 +421,29 @@ export const EnhancedQuestView = ({ profile, onProgressUpdate }: EnhancedQuestVi
 
       {/* Quest Tabs */}
       <Tabs value={activeTab} onValueChange={(value) => setActiveTab(value as QuestGranularity)}>
-        <TabsList className="grid w-full grid-cols-4">
-          {Object.entries(GRANULARITY_CONFIG).map(([key, config]) => (
-            <TabsTrigger key={key} value={key} className="flex items-center gap-2">
-              <config.icon className="h-4 w-4" />
-              <span className="hidden sm:inline">{config.label}</span>
-              <span className="sm:hidden">{config.label.split(' ')[0]}</span>
-            </TabsTrigger>
-          ))}
-        </TabsList>
+        <div className="backdrop-blur-xl bg-card/30 rounded-2xl border border-border/50 p-2">
+          <TabsList className="grid w-full grid-cols-4 bg-transparent h-auto p-0 gap-2">
+            {Object.entries(GRANULARITY_CONFIG).map(([key, config]) => (
+              <TabsTrigger
+                key={key}
+                value={key}
+                className="flex items-center gap-2 py-3 px-4 rounded-xl data-[state=active]:bg-background data-[state=active]:shadow-lg transition-all duration-300 hover:bg-background/50"
+              >
+                <config.icon className="h-4 w-4" />
+                <span className="hidden sm:inline font-medium">{config.label}</span>
+                <span className="sm:hidden font-medium">{config.label.split(' ')[0]}</span>
+              </TabsTrigger>
+            ))}
+          </TabsList>
+        </div>
 
-        {Object.keys(GRANULARITY_CONFIG).map((granularity) => (
-          <TabsContent key={granularity} value={granularity} className="mt-6">
-            {renderQuestSection(granularity as QuestGranularity)}
-          </TabsContent>
-        ))}
+        <div className="mt-8">
+          {Object.keys(GRANULARITY_CONFIG).map((granularity) => (
+            <TabsContent key={granularity} value={granularity} className="mt-0">
+              {renderQuestSection(granularity as QuestGranularity)}
+            </TabsContent>
+          ))}
+        </div>
       </Tabs>
     </div>
   );
