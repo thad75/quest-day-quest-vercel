@@ -1,15 +1,8 @@
-import { createClient } from '@vercel/edge-config';
+import { get, has, getAll, clone } from '@vercel/edge-config';
 
 // Edge Config client for Vercel Storage
-// Note: The connection string only works on Vercel, not locally
-let edgeConfig: ReturnType<typeof createClient> | null = null;
-
-try {
-  edgeConfig = createClient('ecfg_puwsypw5sv3zviw427nirgf4clyg');
-} catch (error) {
-  console.log('Edge Config non disponible en local, utilisera fallback');
-  edgeConfig = null;
-}
+// Utilise la variable d'environnement EDGE_CONFIG automatiquement
+// En production, Vercel remplit automatiquement cette variable
 
 export interface EdgeConfigData {
   users: Record<string, any>;
@@ -25,16 +18,12 @@ export class EdgeConfigManager {
    * Get all users from Edge Config
    */
   static async getUsers(): Promise<Record<string, any>> {
-    if (!edgeConfig) {
-      console.log('Edge Config non disponible');
-      return {};
-    }
-
     try {
-      const users = await edgeConfig.get('users');
-      return users || {};
+      const users = await get('users');
+      // Ne pas muter la valeur retournée - cloner si nécessaire
+      return clone(users) || {};
     } catch (error) {
-      console.error('Error getting users from Edge Config:', error);
+      console.log('Edge Config non disponible ou erreur:', error.message);
       return {};
     }
   }
@@ -44,10 +33,10 @@ export class EdgeConfigManager {
    */
   static async getQuests(): Promise<Record<string, any>> {
     try {
-      const quests = await edgeConfig.get('quests');
-      return quests || {};
+      const quests = await get('quests');
+      return clone(quests) || {};
     } catch (error) {
-      console.error('Error getting quests from Edge Config:', error);
+      console.log('Edge Config non disponible pour les quêtes:', error.message);
       return {};
     }
   }
@@ -57,10 +46,10 @@ export class EdgeConfigManager {
    */
   static async getCommonQuests(): Promise<string[]> {
     try {
-      const commonQuests = await edgeConfig.get('commonQuests');
-      return commonQuests || [];
+      const commonQuests = await get('commonQuests');
+      return clone(commonQuests) || [];
     } catch (error) {
-      console.error('Error getting common quests from Edge Config:', error);
+      console.log('Edge Config non disponible pour les quêtes communes:', error.message);
       return [];
     }
   }
@@ -70,10 +59,10 @@ export class EdgeConfigManager {
    */
   static async getAdminPassword(): Promise<string> {
     try {
-      const password = await edgeConfig.get('adminPassword');
+      const password = await get('adminPassword');
       return password || 'admin123';
     } catch (error) {
-      console.error('Error getting admin password from Edge Config:', error);
+      console.log('Edge Config non disponible pour le mot de passe admin:', error.message);
       return 'admin123';
     }
   }
@@ -109,27 +98,23 @@ export class EdgeConfigManager {
   }
 
   /**
-   * Get full configuration from Edge Config
+   * Get full configuration from Edge Config (optimisé avec getAll)
    */
   static async getFullConfig(): Promise<EdgeConfigData> {
     try {
-      const [users, quests, commonQuests, adminPassword] = await Promise.all([
-        this.getUsers(),
-        this.getQuests(),
-        this.getCommonQuests(),
-        this.getAdminPassword()
-      ]);
+      // Utiliser getAll pour une lecture optimisée
+      const config = await getAll(['users', 'quests', 'commonQuests', 'adminPassword']);
 
       return {
-        users,
-        quests,
-        commonQuests,
-        adminPassword,
+        users: clone(config.users) || {},
+        quests: clone(config.quests) || {},
+        commonQuests: clone(config.commonQuests) || [],
+        adminPassword: config.adminPassword || 'admin123',
         lastUpdated: new Date().toISOString(),
         version: '1.0'
       };
     } catch (error) {
-      console.error('Error getting full config from Edge Config:', error);
+      console.log('Edge Config non disponible pour la configuration complète:', error.message);
       return {
         users: {},
         quests: {},
@@ -145,15 +130,12 @@ export class EdgeConfigManager {
    * Check if Edge Config is available
    */
   static async isAvailable(): Promise<boolean> {
-    if (!edgeConfig) {
-      return false;
-    }
-
     try {
-      const test = await edgeConfig.get('test');
-      return true;
+      // Vérifier si une clé existe
+      const hasKey = await has('users');
+      return hasKey;
     } catch (error) {
-      console.error('Edge Config not available:', error);
+      console.log('Edge Config non disponible:', error.message);
       return false;
     }
   }
