@@ -54,7 +54,7 @@ export class BlobStoreManager {
   async isAvailable(): Promise<boolean> {
     try {
       if (!this.blobToken) {
-        console.warn('Blob Store token not configured');
+        console.warn('Blob Store token not configured - will use JSON fallback');
         return false;
       }
 
@@ -75,6 +75,12 @@ export class BlobStoreManager {
     try {
       this.metrics.totalOperations++;
       this.metrics.lastOperation = 'GET_FULL_CONFIG';
+
+      // Check if Blob Store is properly configured first
+      if (!this.blobToken) {
+        console.log('Blob Store token not configured - skipping fetch');
+        return null;
+      }
 
       const response = await fetch(this.primaryPath);
       if (!response.ok) {
@@ -104,7 +110,7 @@ export class BlobStoreManager {
     try {
       const config = await this.getFullConfig();
       const users = config?.users || {};
-      console.log(' Données utilisateurs chargées via Blob Store');
+      console.log(' Donnï¿½es utilisateurs chargï¿½es via Blob Store');
       return JSON.parse(JSON.stringify(users)); // Deep clone like Edge Config's clone()
     } catch (error) {
       this.logError('GET_USERS', error);
@@ -120,7 +126,7 @@ export class BlobStoreManager {
     try {
       const config = await this.getFullConfig();
       const quests = config?.quests || {};
-      console.log(' Données quêtes chargées via Blob Store');
+      console.log(' Donnï¿½es quï¿½tes chargï¿½es via Blob Store');
       return JSON.parse(JSON.stringify(quests)); // Deep clone like Edge Config's clone()
     } catch (error) {
       this.logError('GET_QUESTS', error);
@@ -136,7 +142,7 @@ export class BlobStoreManager {
     try {
       const config = await this.getFullConfig();
       const commonQuests = config?.commonQuests || [];
-      console.log(' Quêtes communes chargées via Blob Store');
+      console.log(' Quï¿½tes communes chargï¿½es via Blob Store');
       return JSON.parse(JSON.stringify(commonQuests)); // Deep clone like Edge Config's clone()
     } catch (error) {
       this.logError('GET_COMMON_QUESTS', error);
@@ -152,7 +158,7 @@ export class BlobStoreManager {
     try {
       const config = await this.getFullConfig();
       const password = config?.adminPassword || 'admin123';
-      console.log(' Mot de passe admin chargé via Blob Store');
+      console.log(' Mot de passe admin chargï¿½ via Blob Store');
       return password;
     } catch (error) {
       this.logError('GET_ADMIN_PASSWORD', error);
@@ -194,7 +200,7 @@ export class BlobStoreManager {
       this.metrics.lastUpdated = new Date().toISOString();
       this.metrics.storageSize = JSON.stringify(config).length;
 
-      console.log(' Utilisateurs mis à jour avec succès dans Blob Store:', blob.url);
+      console.log(' Utilisateurs mis ï¿½ jour avec succï¿½s dans Blob Store:', blob.url);
       return true;
     } catch (error) {
       this.metrics.failedOperations++;
@@ -237,7 +243,7 @@ export class BlobStoreManager {
       this.metrics.lastUpdated = new Date().toISOString();
       this.metrics.storageSize = JSON.stringify(config).length;
 
-      console.log(' Quêtes mises à jour avec succès dans Blob Store:', blob.url);
+      console.log(' Quï¿½tes mises ï¿½ jour avec succï¿½s dans Blob Store:', blob.url);
       return true;
     } catch (error) {
       this.metrics.failedOperations++;
@@ -266,7 +272,7 @@ export class BlobStoreManager {
         contentType: 'application/json'
       });
 
-      console.log(' Backup créé avec succès:', blob.url);
+      console.log(' Backup crï¿½ï¿½ avec succï¿½s:', blob.url);
       return blob.url;
     } catch (error) {
       this.logError('CREATE_BACKUP', error);
@@ -338,7 +344,7 @@ export class BlobStoreManager {
       this.metrics.lastUpdated = new Date().toISOString();
       this.metrics.storageSize = JSON.stringify(config).length;
 
-      console.log(' Configuration mise à jour avec succès dans Blob Store:', blob.url);
+      console.log(' Configuration mise ï¿½ jour avec succï¿½s dans Blob Store:', blob.url);
       return true;
     } catch (error) {
       this.metrics.failedOperations++;
@@ -429,7 +435,7 @@ export class BlobStoreManager {
         await del(blob.url, { token: this.blobToken });
       }
 
-      console.log(` Nettoyé ${blobsToDelete.length} anciens backups`);
+      console.log(` Nettoyï¿½ ${blobsToDelete.length} anciens backups`);
       return true;
     } catch (error) {
       this.logError('CLEANUP_BACKUPS', error);
