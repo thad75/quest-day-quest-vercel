@@ -1,9 +1,5 @@
 import { UserConfig, QuestConfig } from './userManager';
-import { MockApiService } from './mockApiService';
-
-const API_BASE = '/api';
-// Toujours utiliser le mock API pour Vite/React (les routes Next.js ne fonctionnent pas)
-const USE_MOCK_API = true;
+import { VercelDataService } from './vercelDataService';
 
 export interface ApiResponse<T = any> {
   success: boolean;
@@ -24,48 +20,16 @@ export class ApiService {
   }
 
   /**
-   * Get headers for API requests
-   */
-  private static getHeaders(): Record<string, string> {
-    return {
-      'Content-Type': 'application/json',
-      'x-admin-password': this.adminPassword
-    };
-  }
-
-  /**
-   * Handle API response
-   */
-  private static handleResponse<T>(response: Response): Promise<ApiResponse<T>> {
-    return response.json().then(data => {
-      if (!response.ok) {
-        return {
-          success: false,
-          error: data.error || `HTTP error! status: ${response.status}`
-        };
-      }
-      return {
-        success: true,
-        data: data.data || data,
-        message: data.message,
-        fallback: data.fallback
-      };
-    });
-  }
-
-  /**
    * Get all users and configuration
    */
   static async getUsers(): Promise<ApiResponse<{ users: Record<string, UserConfig>; commonQuests: string[] }>> {
-    if (USE_MOCK_API) {
-      return MockApiService.getUsers();
-    }
-
     try {
-      const response = await fetch(`${API_BASE}/users`, {
-        headers: { 'Content-Type': 'application/json' }
-      });
-      return this.handleResponse(response);
+      const data = await VercelDataService.getUsers();
+      return {
+        success: true,
+        data,
+        fallback: true // Indique qu'on utilise les fichiers locaux
+      };
     } catch (error) {
       return {
         success: false,
@@ -78,17 +42,13 @@ export class ApiService {
    * Create a new user
    */
   static async createUser(userData: Partial<UserConfig>): Promise<ApiResponse<UserConfig>> {
-    if (USE_MOCK_API) {
-      return MockApiService.createUser(userData);
-    }
-
     try {
-      const response = await fetch(`${API_BASE}/users`, {
-        method: 'POST',
-        headers: this.getHeaders(),
-        body: JSON.stringify(userData)
-      });
-      return this.handleResponse(response);
+      const data = await VercelDataService.createUser(userData);
+      return {
+        success: true,
+        data,
+        message: 'Utilisateur créé avec succès. Le fichier de configuration a été téléchargé.'
+      };
     } catch (error) {
       return {
         success: false,
@@ -101,17 +61,14 @@ export class ApiService {
    * Update an existing user
    */
   static async updateUser(userId: string, updates: Partial<UserConfig>): Promise<ApiResponse<UserConfig>> {
-    if (USE_MOCK_API) {
-      return MockApiService.updateUser(userId, updates);
-    }
-
     try {
-      const response = await fetch(`${API_BASE}/users`, {
-        method: 'PUT',
-        headers: this.getHeaders(),
-        body: JSON.stringify({ userId, ...updates })
-      });
-      return this.handleResponse(response);
+      // Pour l'instant, on utilise la création car la mise à jour directe n'est pas disponible
+      const data = await VercelDataService.createUser({ id: userId, ...updates });
+      return {
+        success: true,
+        data,
+        message: 'Utilisateur mis à jour avec succès. Le fichier de configuration a été téléchargé.'
+      };
     } catch (error) {
       return {
         success: false,
@@ -124,16 +81,12 @@ export class ApiService {
    * Delete a user
    */
   static async deleteUser(userId: string): Promise<ApiResponse> {
-    if (USE_MOCK_API) {
-      return MockApiService.deleteUser(userId);
-    }
-
     try {
-      const response = await fetch(`${API_BASE}/users?userId=${encodeURIComponent(userId)}`, {
-        method: 'DELETE',
-        headers: this.getHeaders()
-      });
-      return this.handleResponse(response);
+      const result = await VercelDataService.deleteUser(userId);
+      return {
+        success: result.success,
+        message: result.message
+      };
     } catch (error) {
       return {
         success: false,
@@ -146,15 +99,13 @@ export class ApiService {
    * Get all quests
    */
   static async getQuests(): Promise<ApiResponse<Record<string, QuestConfig>>> {
-    if (USE_MOCK_API) {
-      return MockApiService.getQuests();
-    }
-
     try {
-      const response = await fetch(`${API_BASE}/quests`, {
-        headers: { 'Content-Type': 'application/json' }
-      });
-      return this.handleResponse(response);
+      const data = await VercelDataService.getQuests();
+      return {
+        success: true,
+        data,
+        fallback: true // Indique qu'on utilise les fichiers locaux
+      };
     } catch (error) {
       return {
         success: false,
@@ -167,17 +118,13 @@ export class ApiService {
    * Create a new quest
    */
   static async createQuest(questData: Partial<QuestConfig>): Promise<ApiResponse<QuestConfig>> {
-    if (USE_MOCK_API) {
-      return MockApiService.createQuest(questData);
-    }
-
     try {
-      const response = await fetch(`${API_BASE}/quests`, {
-        method: 'POST',
-        headers: this.getHeaders(),
-        body: JSON.stringify(questData)
-      });
-      return this.handleResponse(response);
+      const data = await VercelDataService.createQuest(questData);
+      return {
+        success: true,
+        data,
+        message: 'Quête créée avec succès. Le fichier de configuration a été téléchargé.'
+      };
     } catch (error) {
       return {
         success: false,
@@ -190,17 +137,14 @@ export class ApiService {
    * Update an existing quest
    */
   static async updateQuest(questId: string, updates: Partial<QuestConfig>): Promise<ApiResponse<QuestConfig>> {
-    if (USE_MOCK_API) {
-      return MockApiService.updateQuest(questId, updates);
-    }
-
     try {
-      const response = await fetch(`${API_BASE}/quests`, {
-        method: 'PUT',
-        headers: this.getHeaders(),
-        body: JSON.stringify({ questId, ...updates })
-      });
-      return this.handleResponse(response);
+      // Pour l'instant, on utilise la création car la mise à jour directe n'est pas disponible
+      const data = await VercelDataService.createQuest({ id: questId, ...updates });
+      return {
+        success: true,
+        data,
+        message: 'Quête mise à jour avec succès. Le fichier de configuration a été téléchargé.'
+      };
     } catch (error) {
       return {
         success: false,
@@ -213,16 +157,12 @@ export class ApiService {
    * Delete a quest
    */
   static async deleteQuest(questId: string): Promise<ApiResponse> {
-    if (USE_MOCK_API) {
-      return MockApiService.deleteQuest(questId);
-    }
-
     try {
-      const response = await fetch(`${API_BASE}/quests?questId=${encodeURIComponent(questId)}`, {
-        method: 'DELETE',
-        headers: this.getHeaders()
-      });
-      return this.handleResponse(response);
+      const result = await VercelDataService.deleteQuest(questId);
+      return {
+        success: result.success,
+        message: result.message
+      };
     } catch (error) {
       return {
         success: false,
@@ -240,15 +180,22 @@ export class ApiService {
     commonQuests: string[];
     isEdgeConfigAvailable: boolean;
   }>> {
-    if (USE_MOCK_API) {
-      return MockApiService.getConfig();
-    }
-
     try {
-      const response = await fetch(`${API_BASE}/config`, {
-        headers: { 'Content-Type': 'application/json' }
-      });
-      return this.handleResponse(response);
+      const [usersData, questsData] = await Promise.all([
+        this.getUsers(),
+        this.getQuests()
+      ]);
+
+      return {
+        success: true,
+        data: {
+          users: usersData.data?.users || {},
+          quests: questsData.data || {},
+          commonQuests: usersData.data?.commonQuests || [],
+          isEdgeConfigAvailable: false // Pour l'instant, on utilise les fichiers locaux
+        },
+        fallback: true
+      };
     } catch (error) {
       return {
         success: false,
@@ -265,17 +212,26 @@ export class ApiService {
     quests: Record<string, QuestConfig>,
     commonQuests: string[]
   ): Promise<ApiResponse> {
-    if (USE_MOCK_API) {
-      return MockApiService.updateConfig(users, quests, commonQuests);
-    }
-
     try {
-      const response = await fetch(`${API_BASE}/config`, {
-        method: 'POST',
-        headers: this.getHeaders(),
-        body: JSON.stringify({ users, quests, commonQuests })
-      });
-      return this.handleResponse(response);
+      const [usersResult, questsResult] = await Promise.all([
+        VercelDataService.updateUsersConfig(users, commonQuests),
+        VercelDataService.updateQuestsConfig(quests)
+      ]);
+
+      return {
+        success: usersResult.success && questsResult.success,
+        message: 'Configuration mise à jour avec succès. Les fichiers ont été téléchargés.',
+        data: {
+          usersConfig: {
+            message: usersResult.message,
+            success: usersResult.success
+          },
+          questsConfig: {
+            message: questsResult.message,
+            success: questsResult.success
+          }
+        }
+      };
     } catch (error) {
       return {
         success: false,
