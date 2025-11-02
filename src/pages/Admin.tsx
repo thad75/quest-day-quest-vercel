@@ -10,7 +10,8 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { toast } from 'sonner';
 import { userManager, UserConfig, QuestConfig } from '@/lib/userManager';
 import { ConfigManager } from '@/lib/configManager';
-import { Gamepad2, Users, Settings, LogOut, Save, Plus, Trash2, Edit, Download, Upload, FileText, Database } from 'lucide-react';
+import { LiveConfigManager } from '@/lib/liveConfigManager';
+import { Gamepad2, Users, Settings, LogOut, Save, Plus, Trash2, Edit, Download, Upload, FileText, Database, CheckCircle, AlertCircle, Copy } from 'lucide-react';
 
 const Admin = () => {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
@@ -19,14 +20,35 @@ const Admin = () => {
   const [quests, setQuests] = useState<QuestConfig[]>([]);
   const [selectedUser, setSelectedUser] = useState<UserConfig | null>(null);
   const [editingMode, setEditingMode] = useState<'user' | 'quest' | null>(null);
+
+  // États pour la sauvegarde en direct
+  const [saveResult, setSaveResult] = useState<{
+    users: { success: boolean; json: string; message: string } | null;
+    quests: { success: boolean; json: string; message: string } | null;
+    instructions: string[] | null;
+  } | null>(null);
+  const [showLiveSave, setShowLiveSave] = useState(false);
+  const [lastSaveTime, setLastSaveTime] = useState<string | null>(null);
+  const [unsavedChanges, setUnsavedChanges] = useState(false);
+
   const navigate = useNavigate();
 
   useEffect(() => {
     const initializeAdmin = async () => {
       try {
         await userManager.loadConfigs();
-        setUsers(userManager.getAvailableUsers());
-        setQuests(userManager.getAllQuests());
+
+        // Essayer de charger depuis localStorage d'abord
+        const liveData = LiveConfigManager.loadFromLocalStorage();
+        if (liveData.hasData) {
+          setUsers(liveData.users);
+          setQuests(liveData.quests);
+          setLastSaveTime(LiveConfigManager.getLastSaveTime());
+          toast.info('Configuration locale chargée');
+        } else {
+          setUsers(userManager.getAvailableUsers());
+          setQuests(userManager.getAllQuests());
+        }
       } catch (error) {
         console.error('Erreur lors du chargement:', error);
         toast.error('Erreur lors du chargement des données');
@@ -35,6 +57,14 @@ const Admin = () => {
 
     initializeAdmin();
   }, []);
+
+  // Vérifier les changements non sauvegardés
+  useEffect(() => {
+    if (users.length > 0 || quests.length > 0) {
+      const hasChanges = LiveConfigManager.hasUnsavedChanges(users, quests);
+      setUnsavedChanges(hasChanges);
+    }
+  }, [users, quests]);
 
   const handleLogin = () => {
     if (userManager.verifyAdminPassword(password)) {
@@ -59,6 +89,29 @@ const Admin = () => {
   const handleSaveQuests = () => {
     ConfigManager.exportQuestsConfig(quests);
     toast.success('Configuration des quêtes exportée avec succès');
+  };
+
+  // Nouvelles fonctions de sauvegarde en direct
+  const handleLiveSave = () => {
+    const result = LiveConfigManager.saveFullConfigLive(users, quests, ['1', '2', '10']);
+    setSaveResult(result);
+    setShowLiveSave(true);
+
+    if (result.users.success && result.quests.success) {
+      setLastSaveTime(new Date().toLocaleTimeString());
+      setUnsavedChanges(false);
+      toast.success('Configuration sauvegardée avec succès !');
+    } else {
+      toast.error('Erreur lors de la sauvegarde');
+    }
+  };
+
+  const copyToClipboard = (text: string, label: string) => {
+    navigator.clipboard.writeText(text).then(() => {
+      toast.success(`${label} copié dans le presse-papiers`);
+    }).catch(() => {
+      toast.error('Erreur lors de la copie');
+    });
   };
 
   const handleExportFullConfig = () => {
@@ -145,7 +198,8 @@ const Admin = () => {
     setUsers([...users, newUser]);
     setSelectedUser(newUser);
     setEditingMode('user');
-    toast.success('Nouvel utilisateur créé');
+    setUnsavedChanges(true);
+    toast.success('Nouvel utilisateur créé - Pensez à sauvegarder !');
   };
 
   const handleCreateQuest = () => {
@@ -168,7 +222,8 @@ const Admin = () => {
     if (selectedUser?.id === userId) {
       setSelectedUser(null);
     }
-    toast.success('Utilisateur supprimé');
+    setUnsavedChanges(true);
+    toast.success('Utilisateur supprimé - Pensez à sauvegarder !');
   };
 
   const handleDeleteQuest = (questId: string) => {
@@ -226,10 +281,22 @@ const Admin = () => {
                 <p className="text-muted-foreground">Gestion des utilisateurs et quêtes</p>
               </div>
             </div>
-            <Button variant="outline" onClick={handleLogout}>
-              <LogOut className="h-4 w-4 mr-2" />
-              Déconnexion
-            </Button>
+            <div className="flex items-center gap-2">
+              {unsavedChanges && (
+                <Button
+                  onClick={handleLiveSave}
+                  size="sm"
+                  className="bg-orange-500 hover:bg-orange-600 text-white"
+                >
+                  <Save className="h-4 w-4 mr-1" />
+                  Sauvegarder
+                </Button>
+              )}
+              <Button variant="outline" onClick={handleLogout}>
+                <LogOut className="h-4 w-4 mr-2" />
+                Déconnexion
+              </Button>
+            </div>
           </div>
         </div>
       </header>
@@ -457,6 +524,30 @@ const Admin = () => {
                   </CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-4">
+                  {/* Bouton de sauvegarde directe */}
+                  <div className="p-4 rounded-xl bg-gradient-to-r from-primary/10 to-secondary/10 border border-primary/20">
+                    <div className="flex items-center justify-between mb-3">
+                      <div className="flex items-center gap-2">
+                        <Save className="h-5 w-5 text-primary" />
+                        <h4 className="font-semibold text-primary">Sauvegarde Directe</h4>
+                      </div>
+                      {unsavedChanges && (
+                        <span className="px-2 py-1 text-xs bg-orange-500/20 text-orange-600 rounded-full">
+                          Non sauvegardé
+                        </span>
+                      )}
+                    </div>
+                    <Button onClick={handleLiveSave} className="w-full h-12 bg-gradient-to-r from-primary to-secondary hover:scale-[1.02] transition-all duration-300">
+                      <Save className="h-4 w-4 mr-2" />
+                      Sauvegarder et Copier JSON
+                    </Button>
+                    {lastSaveTime && (
+                      <p className="text-xs text-muted-foreground text-center">
+                        Dernière sauvegarde: {lastSaveTime}
+                      </p>
+                    )}
+                  </div>
+
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <Button onClick={handleSaveUsers} className="btn-scale h-12">
                       <Users className="h-4 w-4 mr-2" />
@@ -468,7 +559,7 @@ const Admin = () => {
                     </Button>
                     <Button onClick={handleExportFullConfig} className="btn-scale h-12">
                       <FileText className="h-4 w-4 mr-2" />
-                      Exporter Tout (JSON complet)
+                      Exporter Tout (Fichier)
                     </Button>
                     <Button onClick={handleGenerateBackup} variant="outline" className="btn-scale h-12">
                       <Database className="h-4 w-4 mr-2" />
@@ -634,6 +725,118 @@ const Admin = () => {
             </Card>
           </TabsContent>
         </Tabs>
+
+        {/* Modal de sauvegarde directe */}
+        {showLiveSave && saveResult && (
+          <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center p-6 z-50">
+            <Card className="w-full max-w-4xl max-h-[90vh] overflow-y-auto">
+              <CardHeader>
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <div className="p-2 rounded-xl bg-gradient-to-r from-success to-emerald-500">
+                      <CheckCircle className="h-6 w-6 text-white" />
+                    </div>
+                    <div>
+                      <CardTitle>Configuration Sauvegardée !</CardTitle>
+                      <CardDescription>
+                        {saveResult.users.message} • {saveResult.quests.message}
+                      </CardDescription>
+                    </div>
+                  </div>
+                  <Button
+                    variant="outline"
+                    size="icon"
+                    onClick={() => setShowLiveSave(false)}
+                  >
+                    ×
+                  </Button>
+                </div>
+              </CardHeader>
+
+              <CardContent className="space-y-6">
+                {/* Instructions */}
+                <div className="p-4 rounded-lg bg-blue-50 border border-blue-200">
+                  <h4 className="font-medium text-blue-800 mb-2 flex items-center gap-2">
+                    <AlertCircle className="h-4 w-4" />
+                    Instructions pour déployer sur Vercel:
+                  </h4>
+                  <ol className="text-sm text-blue-700 space-y-1">
+                    {saveResult.instructions?.map((instruction, index) => (
+                      <li key={index}>{instruction}</li>
+                    ))}
+                  </ol>
+                </div>
+
+                {/* JSON Utilisateurs */}
+                <div className="space-y-3">
+                  <div className="flex items-center justify-between">
+                    <h4 className="font-medium">📄 users-config.json</h4>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => copyToClipboard(saveResult.users.json, 'JSON utilisateurs')}
+                    >
+                      <Copy className="h-4 w-4 mr-1" />
+                      Copier
+                    </Button>
+                  </div>
+                  <div className="relative">
+                    <Textarea
+                      value={saveResult.users.json}
+                      readOnly
+                      className="min-h-[200px] font-mono text-xs"
+                    />
+                  </div>
+                </div>
+
+                {/* JSON Quêtes */}
+                <div className="space-y-3">
+                  <div className="flex items-center justify-between">
+                    <h4 className="font-medium">🎯 quests-library.json</h4>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => copyToClipboard(saveResult.quests.json, 'JSON quêtes')}
+                    >
+                      <Copy className="h-4 w-4 mr-1" />
+                      Copier
+                    </Button>
+                  </div>
+                  <div className="relative">
+                    <Textarea
+                      value={saveResult.quests.json}
+                      readOnly
+                      className="min-h-[200px] font-mono text-xs"
+                    />
+                  </div>
+                </div>
+
+                {/* Boutons d'action */}
+                <div className="flex gap-3">
+                  <Button
+                    onClick={() => setShowLiveSave(false)}
+                    className="flex-1"
+                  >
+                    J'ai copié les fichiers
+                  </Button>
+                  <Button
+                    variant="outline"
+                    onClick={() => {
+                      // Copier les deux JSON en même temps
+                      const fullJSON = {
+                        users: JSON.parse(saveResult.users.json),
+                        quests: JSON.parse(saveResult.quests.json)
+                      };
+                      copyToClipboard(JSON.stringify(fullJSON, null, 2), 'Configuration complète');
+                    }}
+                  >
+                    Copier tout en un
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+        )}
       </div>
     </div>
   );
