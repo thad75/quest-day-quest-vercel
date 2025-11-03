@@ -1,5 +1,4 @@
 import { UserConfig, QuestConfig } from './userManager';
-import { blobStorageStrategy } from './blobStorageStrategy';
 import { LocalStorageFallback } from './localStorageFallback';
 import { ApiService } from './apiService';
 
@@ -12,56 +11,24 @@ import { ApiService } from './apiService';
 export class VercelDataService {
 
   /**
-   * Initialize storage (Blob Store or LocalStorage fallback)
+   * Initialize storage (API or LocalStorage fallback)
    */
   static async initializeBlobStore(): Promise<boolean> {
     try {
-      // First try to initialize Blob Store
-      console.log('🔄 Attempting to initialize Blob Store...');
-      const existingConfig = await blobStorageStrategy.getFullConfig();
+      console.log('🔄 Attempting to initialize storage...');
 
-      if (existingConfig.data && (Object.keys(existingConfig.data.users).length > 0 || Object.keys(existingConfig.data.quests).length > 0)) {
-        console.log('✅ Blob Store already initialized');
+      if (this.useLocalStorageFallback()) {
+        console.log('📱 Using LocalStorage fallback for initialization');
+        await LocalStorageFallback.initializeIfEmpty();
         return true;
       }
 
-      console.log('🔄 Initializing Blob Store with default data...');
-
-      // Créer la configuration initiale par défaut
-      const initialConfig = {
-        users: {},
-        quests: {
-          '1': {
-            id: '1',
-            title: 'Boire 2L d\'eau',
-            description: 'Boire 2 litres d\'eau au cours de la journée',
-            category: 'santé',
-            xp: 10,
-            difficulty: 'facile',
-            icon: '💧',
-            tags: ['hydratation', 'santé'],
-            requirements: []
-          }
-        },
-        commonQuests: ['1'],
-        adminPassword: 'admin123',
-        lastUpdated: new Date().toISOString(),
-        version: '1.0'
-      };
-
-      const success = await blobStorageStrategy.updateFullConfig(initialConfig);
-
-      if (success) {
-        console.log('✅ Data initialized in Blob Store:', {
-          usersCount: Object.keys(initialConfig.users).length,
-          questsCount: Object.keys(initialConfig.quests).length
-        });
-        return true;
-      } else {
-        throw new Error('Failed to initialize Blob Store');
-      }
+      // Try to check if API is available by fetching users
+      await ApiService.getUsers();
+      console.log('✅ API is available, storage initialized');
+      return true;
     } catch (error) {
-      console.error('❌ Blob Store initialization failed, using LocalStorage fallback:', error);
+      console.error('❌ Storage initialization failed, using LocalStorage fallback:', error);
       // Fallback to LocalStorage
       await LocalStorageFallback.initializeIfEmpty();
       return true;
