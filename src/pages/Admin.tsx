@@ -26,32 +26,32 @@ const Admin = () => {
 
   const navigate = useNavigate();
 
+  const loadData = async () => {
+    if (!isAuthenticated) return;
+
+    setIsLoading(true);
+    try {
+      // Load configuration from Blob Store
+      await userManager.loadConfigs();
+      const usersData = await userManager.getAvailableUsers();
+      const questsData = await userManager.getAllQuests();
+
+      setUsers(usersData);
+      setQuests(questsData);
+      setCommonQuests(userManager.getUsersConfig()?.commonQuests || []);
+      setIsBlobStoreAvailable(true);
+
+      toast.success('Configuration chargée depuis Blob Store');
+    } catch (error) {
+      console.error('Error loading data:', error);
+      toast.error('Erreur lors du chargement des données depuis Blob Store');
+      setIsBlobStoreAvailable(false);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   useEffect(() => {
-    const loadData = async () => {
-      if (!isAuthenticated) return;
-
-      setIsLoading(true);
-      try {
-        // Load configuration from Blob Store
-        await userManager.loadConfigs();
-        const usersData = await userManager.getAvailableUsers();
-        const questsData = await userManager.getAllQuests();
-
-        setUsers(usersData);
-        setQuests(questsData);
-        setCommonQuests(userManager.getUsersConfig()?.commonQuests || []);
-        setIsBlobStoreAvailable(true);
-
-        toast.success('Configuration chargée depuis Blob Store');
-      } catch (error) {
-        console.error('Error loading data:', error);
-        toast.error('Erreur lors du chargement des données depuis Blob Store');
-        setIsBlobStoreAvailable(false);
-      } finally {
-        setIsLoading(false);
-      }
-    };
-
     loadData();
   }, [isAuthenticated]);
 
