@@ -70,8 +70,12 @@ export async function POST(request) {
   try {
     console.log('API: quests POST called');
     const blobToken = process.env.BLOB_READ_WRITE_TOKEN;
-    console.log('API: blobToken exists:', !!blobToken);
     const primaryPath = process.env.BLOB_STORE_PRIMARY_PATH || 'quest-app/data/main-config.json';
+    console.log('API: Environment check:', {
+      blobTokenExists: !!blobToken,
+      blobTokenLength: blobToken ? blobToken.length : 0,
+      primaryPath: primaryPath
+    });
 
     if (!blobToken) {
       return new Response(
@@ -111,7 +115,8 @@ export async function POST(request) {
     const blob = await put(primaryPath, JSON.stringify(updatedConfig, null, 2), {
       access: 'public',
       token: blobToken,
-      contentType: 'application/json'
+      contentType: 'application/json',
+      allowOverwrite: true
     });
 
     return new Response(
@@ -125,8 +130,17 @@ export async function POST(request) {
 
   } catch (error) {
     console.error('API: Error updating quests:', error);
+    console.error('API: Error details:', {
+      message: error.message,
+      stack: error.stack,
+      blobTokenExists: !!process.env.BLOB_READ_WRITE_TOKEN,
+      primaryPath: process.env.BLOB_STORE_PRIMARY_PATH
+    });
     return new Response(
-      JSON.stringify({ error: 'Failed to update quests in Blob Store' }),
+      JSON.stringify({
+        error: 'Failed to update quests in Blob Store',
+        details: error.message
+      }),
       { status: 500, headers: { 'Content-Type': 'application/json' } }
     );
   }
