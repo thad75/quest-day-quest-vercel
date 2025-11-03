@@ -14,7 +14,7 @@ Le CI GitHub ne fonctionne pas actuellement, donc les déploiements automatiques
 
 ### 1. Authentification
 ```bash
-vercel login
+vercel login,k
 ```
 Suivez les instructions pour vous connecter.
 
