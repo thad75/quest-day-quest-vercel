@@ -76,11 +76,14 @@ const AdminUserManagement: React.FC<AdminUserManagementProps> = ({ onUsersUpdate
         AdminApiService.getQuestsNew()
       ]);
 
-      setUsers(usersData.users);
-      setQuests(questsData.templates);
+      setUsers(usersData.users || {});
+      setQuests(questsData.templates || {});
     } catch (error) {
       console.error('Failed to load data:', error);
       toast.error('Failed to load user data');
+      // Ensure state is set to empty objects even on error
+      setUsers({});
+      setQuests({});
     } finally {
       setIsLoading(false);
     }
@@ -331,7 +334,9 @@ const AdminUserManagement: React.FC<AdminUserManagementProps> = ({ onUsersUpdate
         <Card>
           <CardContent className="p-4 text-center">
             <div className="text-2xl font-bold">
-              {Math.max(...Object.values(users).map(u => u.stats?.currentLevel || 0), 0)}
+              {users && Object.keys(users).length > 0
+                ? Math.max(...Object.values(users).map(u => u.stats?.currentLevel || 0), 0)
+                : 0}
             </div>
             <p className="text-sm text-muted-foreground">Highest Level</p>
           </CardContent>
@@ -339,7 +344,9 @@ const AdminUserManagement: React.FC<AdminUserManagementProps> = ({ onUsersUpdate
         <Card>
           <CardContent className="p-4 text-center">
             <div className="text-2xl font-bold">
-              {Object.values(users).reduce((sum, u) => sum + (u.stats?.totalXP || 0), 0)}
+              {users && Object.keys(users).length > 0
+                ? Object.values(users).reduce((sum, u) => sum + (u.stats?.totalXP || 0), 0)
+                : 0}
             </div>
             <p className="text-sm text-muted-foreground">Total XP</p>
           </CardContent>
@@ -347,7 +354,9 @@ const AdminUserManagement: React.FC<AdminUserManagementProps> = ({ onUsersUpdate
         <Card>
           <CardContent className="p-4 text-center">
             <div className="text-2xl font-bold">
-              {Object.values(users).reduce((sum, u) => sum + (u.stats?.totalQuestsCompleted || 0), 0)}
+              {users && Object.keys(users).length > 0
+                ? Object.values(users).reduce((sum, u) => sum + (u.stats?.totalQuestsCompleted || 0), 0)
+                : 0}
             </div>
             <p className="text-sm text-muted-foreground">Quests Completed</p>
           </CardContent>
@@ -363,7 +372,7 @@ const AdminUserManagement: React.FC<AdminUserManagementProps> = ({ onUsersUpdate
             <CardDescription>Click on a user to view details</CardDescription>
           </CardHeader>
           <CardContent className="space-y-3 max-h-96 overflow-y-auto">
-            {Object.values(users).map((user) => (
+            {users && Object.values(users).length > 0 ? Object.values(users).map((user) => (
               <div
                 key={user.id}
                 className={`p-3 rounded-lg border cursor-pointer transition-all hover:border-primary/50 ${
@@ -419,7 +428,11 @@ const AdminUserManagement: React.FC<AdminUserManagementProps> = ({ onUsersUpdate
                   </div>
                 </div>
               </div>
-            ))}
+            )) : (
+              <div className="text-center text-muted-foreground py-8">
+                {isLoading ? 'Loading users...' : 'No users found'}
+              </div>
+            )}
           </CardContent>
         </Card>
 
@@ -597,7 +610,7 @@ const AdminUserManagement: React.FC<AdminUserManagementProps> = ({ onUsersUpdate
             <div>
               <Label>Select Quests</Label>
               <div className="grid grid-cols-1 gap-2 max-h-48 overflow-y-auto border rounded-md p-2">
-                {Object.values(quests).map((quest) => (
+                {quests && Object.values(quests).length > 0 ? Object.values(quests).map((quest) => (
                   <div key={quest.id} className="flex items-center space-x-2">
                     <input
                       type="checkbox"
@@ -621,7 +634,11 @@ const AdminUserManagement: React.FC<AdminUserManagementProps> = ({ onUsersUpdate
                       <span className="text-muted-foreground">{quest.xp} XP</span>
                     </label>
                   </div>
-                ))}
+                )) : (
+                  <div className="text-center text-muted-foreground py-4">
+                    No quests available
+                  </div>
+                )}
               </div>
             </div>
 
