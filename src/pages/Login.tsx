@@ -37,6 +37,9 @@ const Login = () => {
           if (users.length === 0) {
             toast.error('Aucun utilisateur disponible. Contactez l\'administrateur.');
           }
+
+          // IMPORTANT: Load userManager configs so setCurrentUser() works
+          await userManager.loadConfigs();
         } else {
           // Fallback to userManager if API fails
           await userManager.loadConfigs();
