@@ -374,7 +374,7 @@ const Admin = () => {
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-              {quests.map((quest) => (
+              {quests && quests.length > 0 ? quests.map((quest) => (
                 <Card key={quest.id} className="hover:shadow-lg transition-shadow">
                   <CardContent className="p-4">
                     <div className="flex items-start justify-between mb-3">
@@ -411,7 +411,11 @@ const Admin = () => {
                     </div>
                   </CardContent>
                 </Card>
-              ))}
+              )) : (
+                <div className="col-span-full text-center py-12 text-muted-foreground">
+                  {isLoading ? 'Chargement des quêtes...' : 'Aucune quête disponible'}
+                </div>
+              )}
             </div>
 
             <Button onClick={handleExportFullConfig} className="w-full">
@@ -441,7 +445,9 @@ const Admin = () => {
               <Card>
                 <CardContent className="p-6 text-center">
                   <div className="text-3xl font-bold text-accent">
-                    {users.reduce((sum, user) => sum + user.stats.totalQuestsCompleted, 0)}
+                    {users && users.length > 0
+                      ? users.reduce((sum, user) => sum + (user.stats?.totalQuestsCompleted || 0), 0)
+                      : 0}
                   </div>
                   <p className="text-muted-foreground">Total quêtes complétées</p>
                 </CardContent>
@@ -449,7 +455,9 @@ const Admin = () => {
               <Card>
                 <CardContent className="p-6 text-center">
                   <div className="text-3xl font-bold text-success">
-                    {Math.max(...users.map(u => u.stats.currentLevel), 0)}
+                    {users && users.length > 0
+                      ? Math.max(...users.map(u => u.stats?.currentLevel || 0), 0)
+                      : 0}
                   </div>
                   <p className="text-muted-foreground">Niveau maximum</p>
                 </CardContent>
