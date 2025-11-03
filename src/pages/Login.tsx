@@ -6,7 +6,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { toast } from 'sonner';
 import { userManager, UserConfig } from '@/lib/userManager';
-import { ApiService } from '@/lib/apiService';
+import { AdminApiService } from '@/lib/adminApiService';
 import { Gamepad2, Users, LogIn } from 'lucide-react';
 
 const Login = () => {
@@ -27,19 +27,15 @@ const Login = () => {
           return;
         }
 
-        // Charger les utilisateurs depuis l'API
-        const usersResponse = await ApiService.getUsers();
+        // Charger les utilisateurs depuis l'API (new endpoint)
+        const usersResponse = await AdminApiService.getUsersNew();
 
-        if (usersResponse.success && usersResponse.data) {
-          const users = Object.values(usersResponse.data.users || {});
+        if (usersResponse && usersResponse.users) {
+          const users = Object.values(usersResponse.users || {});
           setAvailableUsers(users);
 
           if (users.length === 0) {
             toast.error('Aucun utilisateur disponible. Contactez l\'administrateur.');
-          }
-
-          if (usersResponse.fallback) {
-            toast.info('Chargement depuis les fichiers locaux');
           }
         } else {
           // Fallback to userManager if API fails
