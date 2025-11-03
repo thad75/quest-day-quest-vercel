@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>API Endpoint Test</title>
+</head>
+<body>
+    <h1>API Endpoint Test</h1>
+    <button onclick="testUsers()">Test /api/users</button>
+    <button onclick="testQuests()">Test /api/quests</button>
+    <button onclick="testAuth()">Test /api/auth</button>
+    <div id="results"></div>
+
+    <script>
+        async function testUsers() {
+            try {
+                const response = await fetch('/api/users');
+                const data = await response.json();
+                document.getElementById('results').innerHTML = `
+                    <h3>/api/users Response:</h3>
+                    <pre>${JSON.stringify(data, null, 2)}</pre>
+                    <p>Status: ${response.status}</p>
+                `;
+            } catch (error) {
+                document.getElementById('results').innerHTML = `
+                    <h3>/api/users Error:</h3>
+                    <pre>${error.message}</pre>
+                `;
+            }
+        }
+
+        async function testQuests() {
+            try {
+                const response = await fetch('/api/quests');
+                const data = await response.json();
+                document.getElementById('results').innerHTML = `
+                    <h3>/api/quests Response:</h3>
+                    <pre>${JSON.stringify(data, null, 2)}</pre>
+                    <p>Status: ${response.status}</p>
+                `;
+            } catch (error) {
+                document.getElementById('results').innerHTML = `
+                    <h3>/api/quests Error:</h3>
+                    <pre>${error.message}</pre>
+                `;
+            }
+        }
+
+        async function testAuth() {
+            try {
+                const response = await fetch('/api/auth', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ password: 'admin123' })
+                });
+                const data = await response.json();
+                document.getElementById('results').innerHTML = `
+                    <h3>/api/auth Response:</h3>
+                    <pre>${JSON.stringify(data, null, 2)}</pre>
+                    <p>Status: ${response.status}</p>
+                `;
+            } catch (error) {
+                document.getElementById('results').innerHTML = `
+                    <h3>/api/auth Error:</h3>
+                    <pre>${error.message}</pre>
+                `;
+            }
+        }
+    </script>
+</body>
+</html>
