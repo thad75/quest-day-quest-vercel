@@ -1,5 +1,7 @@
 // Using standard Web API types instead of Next.js
-import { put, list, head } from '@vercel/blob';
+import { put, list } from '@vercel/blob';
+
+console.log('API: users.js loaded successfully');
 
 export async function GET(request) {
   try {
@@ -61,7 +63,9 @@ export async function GET(request) {
 
 export async function POST(request) {
   try {
+    console.log('API: users POST called');
     const blobToken = process.env.BLOB_READ_WRITE_TOKEN;
+    console.log('API: blobToken exists:', !!blobToken);
     const primaryPath = process.env.BLOB_STORE_PRIMARY_PATH || 'quest-app/data/main-config.json';
 
     if (!blobToken) {

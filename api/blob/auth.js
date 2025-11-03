@@ -1,6 +1,8 @@
 // Using standard Web API types instead of Next.js
 import { list } from '@vercel/blob';
 
+console.log('API: auth.js loaded successfully');
+
 export async function POST(request) {
   try {
     const blobToken = process.env.BLOB_READ_WRITE_TOKEN;
