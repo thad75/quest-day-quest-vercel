@@ -1,7 +1,8 @@
 // User management API with new folder structure
+// Updated: Improved error handling and logging
 import { put, list, del } from '@vercel/blob';
 
-console.log('API: users-new.js loaded successfully');
+console.log('API: users-new.js loaded successfully - v2.1');
 
 export async function GET(request) {
   try {

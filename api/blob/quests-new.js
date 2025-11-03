@@ -1,7 +1,8 @@
 // Quest management API with new folder structure
+// Updated: Fix to return templates by default (not daily quests)
 import { put, list, del } from '@vercel/blob';
 
-console.log('API: quests-new.js loaded successfully');
+console.log('API: quests-new.js loaded successfully - v2.1');
 
 export async function GET(request) {
   try {
