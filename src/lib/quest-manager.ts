@@ -1,6 +1,7 @@
 import { Quest, QuestGranularity, DailyQuestState, QuestGenerationConfig } from '@/types/enhanced-quest';
 import { UserProfile, PlayerProgress } from '@/types/quest';
 import QuestGenerator from './quest-generator';
+import { userManager } from './userManager';
 
 const DAILY_QUESTS_KEY = 'enhanced-daily-quests';
 const QUEST_HISTORY_KEY = 'quest-history';
@@ -59,13 +60,24 @@ export class QuestManager {
 
     // Check if we need to regenerate quests
     if (!currentState || currentState.date !== today) {
-      const recentlyCompleted = this.getRecentlyCompletedQuests();
-      currentState = this.questGenerator.generateDailyQuests(
-        today,
-        profile.currentLevel,
-        config,
-        recentlyCompleted
-      );
+      // IMPORTANT: Check if user has admin-assigned quests
+      const assignedQuests = await this.getAssignedQuestsForUser(profile);
+
+      if (assignedQuests && assignedQuests.length > 0) {
+        // Use admin-assigned quests instead of generating random ones
+        currentState = this.createStateFromAssignedQuests(today, assignedQuests);
+        console.log('📋 Using admin-assigned quests:', assignedQuests.length, 'quests');
+      } else {
+        // Fall back to generated quests if no admin assignments
+        const recentlyCompleted = this.getRecentlyCompletedQuests();
+        currentState = this.questGenerator.generateDailyQuests(
+          today,
+          profile.currentLevel,
+          config,
+          recentlyCompleted
+        );
+        console.log('🎲 Generated random quests');
+      }
       this.saveDailyQuests(currentState);
     } else {
       // Check if individual granularities need updates
@@ -81,6 +93,58 @@ export class QuestManager {
     }
 
     return currentState;
+  }
+
+  // Get quests assigned by admin for current user
+  private async getAssignedQuestsForUser(profile: UserProfile): Promise<Quest[]> {
+    try {
+      const currentUser = userManager.getCurrentUser();
+      if (!currentUser || !currentUser.dailyQuests || currentUser.dailyQuests.length === 0) {
+        return [];
+      }
+
+      // Get all available quests
+      const allQuests = userManager.getAllQuests();
+      const assignedQuests: Quest[] = [];
+
+      // Map assigned quest IDs to full Quest objects
+      for (const questId of currentUser.dailyQuests) {
+        const questConfig = allQuests.find(q => q.id === questId);
+        if (questConfig) {
+          assignedQuests.push({
+            id: questConfig.id,
+            title: questConfig.title,
+            description: questConfig.description,
+            xp: questConfig.xp,
+            category: questConfig.category as any,
+            difficulty: questConfig.difficulty === 'facile' ? 1 : questConfig.difficulty === 'moyen' ? 2 : 3,
+            granularity: 'daily',
+            icon: questConfig.icon,
+            completed: false,
+            progress: 0,
+            createdAt: new Date().toISOString()
+          });
+        }
+      }
+
+      return assignedQuests;
+    } catch (error) {
+      console.error('Error loading assigned quests:', error);
+      return [];
+    }
+  }
+
+  // Create quest state from admin-assigned quests
+  private createStateFromAssignedQuests(date: string, quests: Quest[]): DailyQuestState {
+    return {
+      date,
+      dailyQuests: quests,
+      weeklyQuests: [],
+      monthlyQuests: [],
+      specialQuests: [],
+      totalProgress: 0,
+      completedCount: 0
+    };
   }
 
   // Toggle quest completion
