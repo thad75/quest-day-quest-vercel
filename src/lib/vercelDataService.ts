@@ -1,6 +1,6 @@
 import { UserConfig, QuestConfig } from './userManager';
 import { LocalStorageFallback } from './localStorageFallback';
-import { ApiService } from './apiService';
+import { AdminApiService } from './adminApiService';
 
 /**
  * Service de données Vercel avec API fallback
@@ -24,7 +24,7 @@ export class VercelDataService {
       }
 
       // Try to check if API is available by fetching users
-      await ApiService.getUsers();
+      await AdminApiService.getUsersNew();
       console.log('✅ API is available, storage initialized');
       return true;
     } catch (error) {
@@ -63,8 +63,13 @@ export class VercelDataService {
         };
       }
 
-      // Récupérer via API (server-side)
-      return await ApiService.getUsers();
+      // Récupérer via API (new endpoint - server-side)
+      const response = await AdminApiService.getUsersNew();
+      return {
+        users: response.users || {},
+        commonQuests: [], // TODO: commonQuests should be stored separately in new structure
+        isBlobStore: response.isBlobStore || true
+      };
     } catch (error) {
       console.error('❌ API failed for users, using LocalStorage fallback:', error);
       // Fallback to LocalStorage
@@ -88,8 +93,9 @@ export class VercelDataService {
         return await LocalStorageFallback.getQuests();
       }
 
-      // Récupérer via API (server-side)
-      return await ApiService.getQuests();
+      // Récupérer via API (new endpoint - server-side)
+      const response = await AdminApiService.getQuestsNew();
+      return response.templates || {};
     } catch (error) {
       console.error('❌ API failed for quests, using LocalStorage fallback:', error);
       // Fallback to LocalStorage
@@ -108,10 +114,11 @@ export class VercelDataService {
         return password === localStoragePassword;
       }
 
-      // Récupérer via API (server-side)
-      return await ApiService.verifyAdminPassword(password);
+      // For now, use hardcoded admin password
+      // TODO: Store admin password in Vercel environment variables
+      return password === 'admin123';
     } catch (error) {
-      console.error('❌ API failed for admin password, using LocalStorage fallback:', error);
+      console.error('❌ Admin password verification failed:', error);
       // Fallback to LocalStorage
       const localStoragePassword = await LocalStorageFallback.getAdminPassword();
       return password === localStoragePassword;
