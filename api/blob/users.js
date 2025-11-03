@@ -5,12 +5,25 @@ console.log('API: users.js loaded successfully');
 
 export async function GET(request) {
   try {
+    console.log('API: users GET called');
     const blobToken = process.env.BLOB_READ_WRITE_TOKEN;
     const primaryPath = process.env.BLOB_STORE_PRIMARY_PATH || 'quest-app/data/main-config.json';
 
+    console.log('API: Environment check:', {
+      blobTokenExists: !!blobToken,
+      blobTokenLength: blobToken ? blobToken.length : 0,
+      primaryPath: primaryPath
+    });
+
     if (!blobToken) {
       return new Response(
-        JSON.stringify({ error: 'Blob Store token not configured' }),
+        JSON.stringify({
+          error: 'Blob Store token not configured',
+          debug: {
+            blobTokenExists: !!blobToken,
+            primaryPath: primaryPath
+          }
+        }),
         { status: 500, headers: { 'Content-Type': 'application/json' } }
       );
     }
@@ -54,6 +67,12 @@ export async function GET(request) {
 
   } catch (error) {
     console.error('API: Error fetching users:', error);
+    console.error('API: Error details:', {
+      message: error.message,
+      stack: error.stack,
+      blobTokenExists: !!process.env.BLOB_READ_WRITE_TOKEN,
+      primaryPath: process.env.BLOB_STORE_PRIMARY_PATH
+    });
     return new Response(
       JSON.stringify({ error: 'Failed to fetch users from Blob Store' }),
       { status: 500, headers: { 'Content-Type': 'application/json' } }
@@ -121,8 +140,17 @@ export async function POST(request) {
 
   } catch (error) {
     console.error('API: Error updating users:', error);
+    console.error('API: Error details:', {
+      message: error.message,
+      stack: error.stack,
+      blobTokenExists: !!process.env.BLOB_READ_WRITE_TOKEN,
+      primaryPath: process.env.BLOB_STORE_PRIMARY_PATH
+    });
     return new Response(
-      JSON.stringify({ error: 'Failed to update users in Blob Store' }),
+      JSON.stringify({
+        error: 'Failed to update users in Blob Store',
+        details: error.message
+      }),
       { status: 500, headers: { 'Content-Type': 'application/json' } }
     );
   }
