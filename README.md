@@ -1,73 +1,153 @@
-# Welcome to your Lovable project
+# Quest Day - Daily Quest Tracker
 
-## Project info
+A gamified daily quest tracking application built with React, TypeScript, and Vercel infrastructure. Transform your daily tasks into engaging quests with XP, levels, and achievements.
 
-**URL**: https://lovable.dev/projects/47f01565-5c09-4bbf-8b09-32ac79666629
+## Features
 
-## How can I edit this code?
+- **Quest Management**: Create, assign, and track daily quests
+- **Gamification**: Earn XP, level up, and maintain streaks
+- **Admin Dashboard**: Manage users and assign quests
+- **Multi-User Support**: Separate user profiles with personalized quests
+- **Data Persistence**: Powered by Vercel Blob Storage
+- **Modern UI**: Built with shadcn-ui and Tailwind CSS
 
-There are several ways of editing your application.
+## Technology Stack
 
-**Use Lovable**
+- **Frontend**: React 18, TypeScript, Vite
+- **UI Components**: shadcn-ui, Radix UI, Tailwind CSS
+- **Backend**: Vercel Serverless Functions
+- **Database**: Vercel Blob Storage
+- **Hosting**: Vercel
 
-Simply visit the [Lovable Project](https://lovable.dev/projects/47f01565-5c09-4bbf-8b09-32ac79666629) and start prompting.
+## Getting Started
 
-Changes made via Lovable will be committed automatically to this repo.
+### Prerequisites
 
-**Use your preferred IDE**
+- Node.js 22.x or higher
+- npm or yarn package manager
+- Vercel account (for deployment)
 
-If you want to work locally using your own IDE, you can clone this repo and push changes. Pushed changes will also be reflected in Lovable.
+### Installation
 
-The only requirement is having Node.js & npm installed - [install with nvm](https://github.com/nvm-sh/nvm#installing-and-updating)
-
-Follow these steps:
-
+1. Clone the repository:
 ```sh
-# Step 1: Clone the repository using the project's Git URL.
 git clone <YOUR_GIT_URL>
+cd quest-day-quest-vercel
+```
 
-# Step 2: Navigate to the project directory.
-cd <YOUR_PROJECT_NAME>
+2. Install dependencies:
+```sh
+npm install
+```
 
-# Step 3: Install the necessary dependencies.
-npm i
+3. Set up environment variables:
+```sh
+cp .env.local.example .env.local
+```
 
-# Step 4: Start the development server with auto-reloading and an instant preview.
+4. Configure your environment variables in `.env.local`:
+```
+BLOB_READ_WRITE_TOKEN=your_vercel_blob_token
+```
+
+5. Start the development server:
+```sh
 npm run dev
 ```
 
-**Edit a file directly in GitHub**
+The application will be available at `http://localhost:8080`
 
-- Navigate to the desired file(s).
-- Click the "Edit" button (pencil icon) at the top right of the file view.
-- Make your changes and commit the changes.
+## Available Scripts
 
-**Use GitHub Codespaces**
+- `npm run dev` - Start development server
+- `npm run build` - Build for production
+- `npm run preview` - Preview production build
+- `npm run lint` - Run ESLint
+- `npm run setup:blob-store` - Initialize Vercel Blob Storage
+- `npm run test:blob-store` - Test Blob Storage connection
+- `npm run blob:health` - Check Blob Storage health
 
-- Navigate to the main page of your repository.
-- Click on the "Code" button (green button) near the top right.
-- Select the "Codespaces" tab.
-- Click on "New codespace" to launch a new Codespace environment.
-- Edit files directly within the Codespace and commit and push your changes once you're done.
+## Project Structure
 
-## What technologies are used for this project?
+```
+quest-day-quest-vercel/
+├── api/                      # Vercel serverless functions
+│   └── blob/                # API endpoints
+│       └── admin/           # Admin management endpoints
+├── src/
+│   ├── components/          # React components
+│   │   ├── ui/             # shadcn-ui components
+│   │   └── quest-system/   # Quest-related components
+│   ├── lib/                # Utility functions and services
+│   └── data/               # Static data and templates
+├── public/                  # Static assets
+└── scripts/                # Utility scripts
 
-This project is built with:
+```
 
-- Vite
-- TypeScript
-- React
-- shadcn-ui
-- Tailwind CSS
+## Admin Dashboard
 
-## How can I deploy this project?
+Access the admin dashboard to:
+- Create and manage users
+- Assign quests to users
+- Modify user stats and levels
+- Track user progress
 
-Simply open [Lovable](https://lovable.dev/projects/47f01565-5c09-4bbf-8b09-32ac79666629) and click on Share -> Publish.
+Default admin credentials are configured via environment variables.
 
-## Can I connect a custom domain to my Lovable project?
+## API Endpoints
 
-Yes, you can!
+### Admin Endpoints
+- `POST /api/blob/admin/create-user` - Create a new user
+- `POST /api/blob/admin/modify-user` - Update user information
+- `POST /api/blob/admin/delete-user` - Delete a user
+- `POST /api/blob/admin/assign-tasks` - Assign quests to users
 
-To connect a domain, navigate to Project > Settings > Domains and click Connect Domain.
+### User Endpoints
+- `GET /api/blob/users-new` - Get all users
+- `GET /api/blob/quests-new` - Get quest templates
+- `POST /api/blob/auth` - Authenticate admin access
 
-Read more here: [Setting up a custom domain](https://docs.lovable.dev/features/custom-domain#custom-domain)
+## Deployment
+
+### Deploy to Vercel
+
+1. Install Vercel CLI:
+```sh
+npm install -g vercel
+```
+
+2. Deploy:
+```sh
+vercel
+```
+
+3. Configure environment variables in Vercel dashboard:
+   - `BLOB_READ_WRITE_TOKEN`
+
+### Automatic Deployments
+
+Connect your repository to Vercel for automatic deployments on every push to main branch.
+
+## Environment Variables
+
+Required environment variables:
+
+- `BLOB_READ_WRITE_TOKEN` - Vercel Blob Storage access token
+- `BLOB_STORE_PRIMARY_PATH` - Primary data path (optional)
+
+## Contributing
+
+1. Fork the repository
+2. Create a feature branch (`git checkout -b feature/amazing-feature`)
+3. Commit your changes (`git commit -m 'Add amazing feature'`)
+4. Push to the branch (`git push origin feature/amazing-feature`)
+5. Open a Pull Request
+
+## License
+
+This project is private and proprietary.
+
+## Support
+
+For issues and questions, please open an issue on the GitHub repository.
