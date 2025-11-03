@@ -3,6 +3,18 @@ import { put, list } from '@vercel/blob';
 
 console.log('API: admin/create-user.js loaded successfully');
 
+// Handle OPTIONS for CORS
+export async function OPTIONS(request) {
+  return new Response(null, {
+    status: 200,
+    headers: {
+      'Access-Control-Allow-Origin': '*',
+      'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
+      'Access-Control-Allow-Headers': 'Content-Type, Authorization'
+    }
+  });
+}
+
 export async function POST(request) {
   try {
     console.log('API: admin/create-user POST called');
@@ -10,8 +22,18 @@ export async function POST(request) {
 
     if (!blobToken) {
       return new Response(
-        JSON.stringify({ error: 'Blob Store token not configured' }),
-        { status: 500, headers: { 'Content-Type': 'application/json' } }
+        JSON.stringify({
+          success: false,
+          error: 'Blob Store token not configured',
+          message: 'Blob Store token not configured'
+        }),
+        {
+          status: 500,
+          headers: {
+            'Content-Type': 'application/json',
+            'Access-Control-Allow-Origin': '*'
+          }
+        }
       );
     }
 
@@ -20,8 +42,18 @@ export async function POST(request) {
 
     if (!userData) {
       return new Response(
-        JSON.stringify({ error: 'Missing userData' }),
-        { status: 400, headers: { 'Content-Type': 'application/json' } }
+        JSON.stringify({
+          success: false,
+          error: 'Missing userData',
+          message: 'Missing userData'
+        }),
+        {
+          status: 400,
+          headers: {
+            'Content-Type': 'application/json',
+            'Access-Control-Allow-Origin': '*'
+          }
+        }
       );
     }
 
@@ -75,7 +107,13 @@ export async function POST(request) {
         userData: newUserData,
         url: blob.url
       }),
-      { status: 201, headers: { 'Content-Type': 'application/json' } }
+      {
+        status: 201,
+        headers: {
+          'Content-Type': 'application/json',
+          'Access-Control-Allow-Origin': '*'
+        }
+      }
     );
 
   } catch (error) {
@@ -84,14 +122,35 @@ export async function POST(request) {
     // Handle user already exists error
     if (error.message && error.message.includes('already exists')) {
       return new Response(
-        JSON.stringify({ error: 'User with this ID already exists' }),
-        { status: 409, headers: { 'Content-Type': 'application/json' } }
+        JSON.stringify({
+          success: false,
+          error: 'User with this ID already exists',
+          message: 'User with this ID already exists'
+        }),
+        {
+          status: 409,
+          headers: {
+            'Content-Type': 'application/json',
+            'Access-Control-Allow-Origin': '*'
+          }
+        }
       );
     }
 
     return new Response(
-      JSON.stringify({ error: 'Failed to create user' }),
-      { status: 500, headers: { 'Content-Type': 'application/json' } }
+      JSON.stringify({
+        success: false,
+        error: 'Failed to create user',
+        message: error.message || 'Failed to create user',
+        details: error.toString()
+      }),
+      {
+        status: 500,
+        headers: {
+          'Content-Type': 'application/json',
+          'Access-Control-Allow-Origin': '*'
+        }
+      }
     );
   }
 }

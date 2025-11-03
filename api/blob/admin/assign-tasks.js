@@ -3,6 +3,18 @@ import { put, list } from '@vercel/blob';
 
 console.log('API: admin/assign-tasks.js loaded successfully');
 
+// Handle OPTIONS for CORS
+export async function OPTIONS(request) {
+  return new Response(null, {
+    status: 200,
+    headers: {
+      'Access-Control-Allow-Origin': '*',
+      'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
+      'Access-Control-Allow-Headers': 'Content-Type, Authorization'
+    }
+  });
+}
+
 export async function POST(request) {
   try {
     console.log('API: admin/assign-tasks POST called');
@@ -10,8 +22,18 @@ export async function POST(request) {
 
     if (!blobToken) {
       return new Response(
-        JSON.stringify({ error: 'Blob Store token not configured' }),
-        { status: 500, headers: { 'Content-Type': 'application/json' } }
+        JSON.stringify({
+          success: false,
+          error: 'Blob Store token not configured',
+          message: 'Blob Store token not configured'
+        }),
+        {
+          status: 500,
+          headers: {
+            'Content-Type': 'application/json',
+            'Access-Control-Allow-Origin': '*'
+          }
+        }
       );
     }
 
@@ -20,8 +42,18 @@ export async function POST(request) {
 
     if (!userId || !questIds || !Array.isArray(questIds)) {
       return new Response(
-        JSON.stringify({ error: 'Missing userId or questIds (must be an array)' }),
-        { status: 400, headers: { 'Content-Type': 'application/json' } }
+        JSON.stringify({
+          success: false,
+          error: 'Missing userId or questIds (must be an array)',
+          message: 'Missing userId or questIds (must be an array)'
+        }),
+        {
+          status: 400,
+          headers: {
+            'Content-Type': 'application/json',
+            'Access-Control-Allow-Origin': '*'
+          }
+        }
       );
     }
 
@@ -38,8 +70,18 @@ export async function POST(request) {
       const userBlob = blobs.find(blob => blob.pathname === userPath);
       if (!userBlob) {
         return new Response(
-          JSON.stringify({ error: 'User not found' }),
-          { status: 404, headers: { 'Content-Type': 'application/json' } }
+          JSON.stringify({
+            success: false,
+            error: 'User not found',
+            message: 'User not found'
+          }),
+          {
+            status: 404,
+            headers: {
+              'Content-Type': 'application/json',
+              'Access-Control-Allow-Origin': '*'
+            }
+          }
         );
       }
 
@@ -50,8 +92,18 @@ export async function POST(request) {
     } catch (error) {
       console.error('Error fetching user data:', error);
       return new Response(
-        JSON.stringify({ error: 'Failed to fetch user data' }),
-        { status: 500, headers: { 'Content-Type': 'application/json' } }
+        JSON.stringify({
+          success: false,
+          error: 'Failed to fetch user data',
+          message: error.message || 'Failed to fetch user data'
+        }),
+        {
+          status: 500,
+          headers: {
+            'Content-Type': 'application/json',
+            'Access-Control-Allow-Origin': '*'
+          }
+        }
       );
     }
 
@@ -59,8 +111,18 @@ export async function POST(request) {
     const validQuestIds = await verifyQuestsExist(questIds, blobToken);
     if (validQuestIds.length === 0) {
       return new Response(
-        JSON.stringify({ error: 'No valid quests found to assign' }),
-        { status: 400, headers: { 'Content-Type': 'application/json' } }
+        JSON.stringify({
+          success: false,
+          error: 'No valid quests found to assign',
+          message: 'No valid quests found to assign'
+        }),
+        {
+          status: 400,
+          headers: {
+            'Content-Type': 'application/json',
+            'Access-Control-Allow-Origin': '*'
+          }
+        }
       );
     }
 
@@ -80,8 +142,18 @@ export async function POST(request) {
         break;
       default:
         return new Response(
-          JSON.stringify({ error: 'Invalid action. Use "assign", "replace", or "remove"' }),
-          { status: 400, headers: { 'Content-Type': 'application/json' } }
+          JSON.stringify({
+            success: false,
+            error: 'Invalid action. Use "assign", "replace", or "remove"',
+            message: 'Invalid action. Use "assign", "replace", or "remove"'
+          }),
+          {
+            status: 400,
+            headers: {
+              'Content-Type': 'application/json',
+              'Access-Control-Allow-Origin': '*'
+            }
+          }
         );
     }
 
@@ -122,14 +194,31 @@ export async function POST(request) {
         dailyQuests: userData.dailyQuests,
         url: blob.url
       }),
-      { status: 200, headers: { 'Content-Type': 'application/json' } }
+      {
+        status: 200,
+        headers: {
+          'Content-Type': 'application/json',
+          'Access-Control-Allow-Origin': '*'
+        }
+      }
     );
 
   } catch (error) {
     console.error('API: Error assigning tasks:', error);
     return new Response(
-      JSON.stringify({ error: 'Failed to assign tasks' }),
-      { status: 500, headers: { 'Content-Type': 'application/json' } }
+      JSON.stringify({
+        success: false,
+        error: 'Failed to assign tasks',
+        message: error.message || 'Failed to assign tasks',
+        details: error.toString()
+      }),
+      {
+        status: 500,
+        headers: {
+          'Content-Type': 'application/json',
+          'Access-Control-Allow-Origin': '*'
+        }
+      }
     );
   }
 }

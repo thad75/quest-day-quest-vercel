@@ -3,6 +3,18 @@ import { put, list } from '@vercel/blob';
 
 console.log('API: admin/modify-user.js loaded successfully');
 
+// Handle OPTIONS for CORS
+export async function OPTIONS(request) {
+  return new Response(null, {
+    status: 200,
+    headers: {
+      'Access-Control-Allow-Origin': '*',
+      'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
+      'Access-Control-Allow-Headers': 'Content-Type, Authorization'
+    }
+  });
+}
+
 export async function POST(request) {
   try {
     console.log('API: admin/modify-user POST called');
@@ -10,8 +22,18 @@ export async function POST(request) {
 
     if (!blobToken) {
       return new Response(
-        JSON.stringify({ error: 'Blob Store token not configured' }),
-        { status: 500, headers: { 'Content-Type': 'application/json' } }
+        JSON.stringify({
+          success: false,
+          error: 'Blob Store token not configured',
+          message: 'Blob Store token not configured'
+        }),
+        {
+          status: 500,
+          headers: {
+            'Content-Type': 'application/json',
+            'Access-Control-Allow-Origin': '*'
+          }
+        }
       );
     }
 
@@ -20,8 +42,18 @@ export async function POST(request) {
 
     if (!userId || !userData) {
       return new Response(
-        JSON.stringify({ error: 'Missing userId or userData' }),
-        { status: 400, headers: { 'Content-Type': 'application/json' } }
+        JSON.stringify({
+          success: false,
+          error: 'Missing userId or userData',
+          message: 'Missing userId or userData'
+        }),
+        {
+          status: 400,
+          headers: {
+            'Content-Type': 'application/json',
+            'Access-Control-Allow-Origin': '*'
+          }
+        }
       );
     }
 
@@ -38,8 +70,18 @@ export async function POST(request) {
       const userBlob = blobs.find(blob => blob.pathname === userPath);
       if (!userBlob) {
         return new Response(
-          JSON.stringify({ error: 'User not found' }),
-          { status: 404, headers: { 'Content-Type': 'application/json' } }
+          JSON.stringify({
+            success: false,
+            error: 'User not found',
+            message: 'User not found'
+          }),
+          {
+            status: 404,
+            headers: {
+              'Content-Type': 'application/json',
+              'Access-Control-Allow-Origin': '*'
+            }
+          }
         );
       }
 
@@ -50,8 +92,18 @@ export async function POST(request) {
     } catch (error) {
       console.error('Error fetching current user data:', error);
       return new Response(
-        JSON.stringify({ error: 'Failed to fetch current user data' }),
-        { status: 500, headers: { 'Content-Type': 'application/json' } }
+        JSON.stringify({
+          success: false,
+          error: 'Failed to fetch current user data',
+          message: error.message || 'Failed to fetch current user data'
+        }),
+        {
+          status: 500,
+          headers: {
+            'Content-Type': 'application/json',
+            'Access-Control-Allow-Origin': '*'
+          }
+        }
       );
     }
 
@@ -96,14 +148,31 @@ export async function POST(request) {
         userData: updatedUserData,
         url: blob.url
       }),
-      { status: 200, headers: { 'Content-Type': 'application/json' } }
+      {
+        status: 200,
+        headers: {
+          'Content-Type': 'application/json',
+          'Access-Control-Allow-Origin': '*'
+        }
+      }
     );
 
   } catch (error) {
     console.error('API: Error modifying user:', error);
     return new Response(
-      JSON.stringify({ error: 'Failed to modify user' }),
-      { status: 500, headers: { 'Content-Type': 'application/json' } }
+      JSON.stringify({
+        success: false,
+        error: 'Failed to modify user',
+        message: error.message || 'Failed to modify user',
+        details: error.toString()
+      }),
+      {
+        status: 500,
+        headers: {
+          'Content-Type': 'application/json',
+          'Access-Control-Allow-Origin': '*'
+        }
+      }
     );
   }
 }

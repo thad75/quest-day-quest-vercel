@@ -10,8 +10,18 @@ export async function POST(request) {
 
     if (!blobToken) {
       return new Response(
-        JSON.stringify({ error: 'Blob Store token not configured' }),
-        { status: 500, headers: { 'Content-Type': 'application/json' } }
+        JSON.stringify({
+          success: false,
+          error: 'Blob Store token not configured',
+          message: 'Blob Store token not configured'
+        }),
+        {
+          status: 500,
+          headers: {
+            'Content-Type': 'application/json',
+            'Access-Control-Allow-Origin': '*'
+          }
+        }
       );
     }
 
@@ -20,8 +30,18 @@ export async function POST(request) {
 
     if (!userId) {
       return new Response(
-        JSON.stringify({ error: 'Missing userId' }),
-        { status: 400, headers: { 'Content-Type': 'application/json' } }
+        JSON.stringify({
+          success: false,
+          error: 'Missing userId',
+          message: 'Missing userId'
+        }),
+        {
+          status: 400,
+          headers: {
+            'Content-Type': 'application/json',
+            'Access-Control-Allow-Origin': '*'
+          }
+        }
       );
     }
 
@@ -36,15 +56,35 @@ export async function POST(request) {
       const userBlob = blobs.find(blob => blob.pathname === userPath);
       if (!userBlob) {
         return new Response(
-          JSON.stringify({ error: 'User not found' }),
-          { status: 404, headers: { 'Content-Type': 'application/json' } }
+          JSON.stringify({
+            success: false,
+            error: 'User not found',
+            message: 'User not found'
+          }),
+          {
+            status: 404,
+            headers: {
+              'Content-Type': 'application/json',
+              'Access-Control-Allow-Origin': '*'
+            }
+          }
         );
       }
     } catch (error) {
       console.error('Error checking user existence:', error);
       return new Response(
-        JSON.stringify({ error: 'Failed to verify user existence' }),
-        { status: 500, headers: { 'Content-Type': 'application/json' } }
+        JSON.stringify({
+          success: false,
+          error: 'Failed to verify user existence',
+          message: error.message || 'Failed to verify user existence'
+        }),
+        {
+          status: 500,
+          headers: {
+            'Content-Type': 'application/json',
+            'Access-Control-Allow-Origin': '*'
+          }
+        }
       );
     }
 
@@ -63,14 +103,31 @@ export async function POST(request) {
         message: 'User deleted successfully',
         userId
       }),
-      { status: 200, headers: { 'Content-Type': 'application/json' } }
+      {
+        status: 200,
+        headers: {
+          'Content-Type': 'application/json',
+          'Access-Control-Allow-Origin': '*'
+        }
+      }
     );
 
   } catch (error) {
     console.error('API: Error deleting user:', error);
     return new Response(
-      JSON.stringify({ error: 'Failed to delete user' }),
-      { status: 500, headers: { 'Content-Type': 'application/json' } }
+      JSON.stringify({
+        success: false,
+        error: 'Failed to delete user',
+        message: error.message || 'Failed to delete user',
+        details: error.toString()
+      }),
+      {
+        status: 500,
+        headers: {
+          'Content-Type': 'application/json',
+          'Access-Control-Allow-Origin': '*'
+        }
+      }
     );
   }
 }
