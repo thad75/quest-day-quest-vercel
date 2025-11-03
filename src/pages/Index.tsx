@@ -48,6 +48,9 @@ const Index = () => {
   useEffect(() => {
     const initializeUser = async () => {
       try {
+        // IMPORTANT: Load all configs first (users + quests from API)
+        await userManager.loadConfigs();
+
         // Try to load current user from userManager
         const hasCurrentUser = await userManager.loadCurrentUserFromStorage();
 
