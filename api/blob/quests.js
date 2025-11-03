@@ -1,7 +1,7 @@
 // Using standard Web API types instead of Next.js
-import { put, list, head } from '@vercel/blob';
+import { put, list } from '@vercel/blob';
 
-export async function GET(request: Request) {
+export async function GET(request) {
   try {
     const blobToken = process.env.BLOB_READ_WRITE_TOKEN;
     const primaryPath = process.env.BLOB_STORE_PRIMARY_PATH || 'quest-app/data/main-config.json';
@@ -22,13 +22,23 @@ export async function GET(request: Request) {
     const mainConfigBlob = blobs.find(blob => blob.pathname === primaryPath);
 
     if (!mainConfigBlob) {
-      // Return empty config if file doesn't exist
+      // Return default quests if file doesn't exist
+      const defaultQuests = {
+        '1': {
+          id: '1',
+          title: 'Boire 2L d\'eau',
+          description: 'Boire 2 litres d\'eau au cours de la journée',
+          category: 'santé',
+          xp: 10,
+          difficulty: 'facile',
+          icon: '💧',
+          tags: ['hydratation', 'santé'],
+          requirements: []
+        }
+      };
+
       return new Response(
-        JSON.stringify({
-          users: {},
-          commonQuests: [],
-          isBlobStore: true
-        }),
+        JSON.stringify(defaultQuests),
         { status: 200, headers: { 'Content-Type': 'application/json' } }
       );
     }
@@ -40,26 +50,21 @@ export async function GET(request: Request) {
     }
 
     const config = await response.json();
-
     return new Response(
-      JSON.stringify({
-        users: config.users || {},
-        commonQuests: config.commonQuests || [],
-        isBlobStore: true
-      }),
+      JSON.stringify(config.quests || {}),
       { status: 200, headers: { 'Content-Type': 'application/json' } }
     );
 
   } catch (error) {
-    console.error('API: Error fetching users:', error);
+    console.error('API: Error fetching quests:', error);
     return new Response(
-      JSON.stringify({ error: 'Failed to fetch users from Blob Store' }),
+      JSON.stringify({ error: 'Failed to fetch quests from Blob Store' }),
       { status: 500, headers: { 'Content-Type': 'application/json' } }
     );
   }
 }
 
-export async function POST(request: Request) {
+export async function POST(request) {
   try {
     const blobToken = process.env.BLOB_READ_WRITE_TOKEN;
     const primaryPath = process.env.BLOB_STORE_PRIMARY_PATH || 'quest-app/data/main-config.json';
@@ -72,7 +77,7 @@ export async function POST(request: Request) {
     }
 
     const body = await request.json();
-    const { users, commonQuests } = body;
+    const { quests } = body;
 
     // Get current config
     const { blobs } = await list({
@@ -93,8 +98,7 @@ export async function POST(request: Request) {
     // Update config
     const updatedConfig = {
       ...currentConfig,
-      users: users || {},
-      commonQuests: commonQuests || [],
+      quests: quests || {},
       lastUpdated: new Date().toISOString(),
       version: '1.0'
     };
@@ -109,16 +113,16 @@ export async function POST(request: Request) {
     return new Response(
       JSON.stringify({
         success: true,
-        message: 'Users updated successfully in Blob Store',
+        message: 'Quests updated successfully in Blob Store',
         url: blob.url
       }),
       { status: 200, headers: { 'Content-Type': 'application/json' } }
     );
 
   } catch (error) {
-    console.error('API: Error updating users:', error);
+    console.error('API: Error updating quests:', error);
     return new Response(
-      JSON.stringify({ error: 'Failed to update users in Blob Store' }),
+      JSON.stringify({ error: 'Failed to update quests in Blob Store' }),
       { status: 500, headers: { 'Content-Type': 'application/json' } }
     );
   }

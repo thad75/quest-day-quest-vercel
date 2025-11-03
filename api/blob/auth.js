@@ -1,7 +1,7 @@
 // Using standard Web API types instead of Next.js
 import { list } from '@vercel/blob';
 
-export async function POST(request: Request) {
+export async function POST(request) {
   try {
     const blobToken = process.env.BLOB_READ_WRITE_TOKEN;
     const primaryPath = process.env.BLOB_STORE_PRIMARY_PATH || 'quest-app/data/main-config.json';
