@@ -89,27 +89,20 @@ const Admin = () => {
   const handleSaveChanges = async () => {
     setIsLoading(true);
     try {
-      const usersRecord = users.reduce((acc, user) => {
-        acc[user.id] = user;
-        return acc;
-      }, {} as Record<string, UserConfig>);
-
       const questsRecord = quests.reduce((acc, quest) => {
         acc[quest.id] = quest;
         return acc;
       }, {} as Record<string, QuestConfig>);
 
-      // Update users and quests separately using VercelDataService
-      const usersResponse = await VercelDataService.updateUsersConfig(usersRecord, commonQuests);
-      const questsResponse = await VercelDataService.updateQuestsConfig(questsRecord);
+      // Save all quests using NEW endpoint
+      const questsResponse = await AdminApiService.saveQuestTemplates(questsRecord);
 
-      if (usersResponse.success && questsResponse.success) {
+      if (questsResponse.success) {
         toast.success('Configuration sauvegardée avec succès dans Blob Store !');
         // Reload the data to reflect changes
         await userManager.loadConfigs();
       } else {
-        toast.error('Erreur lors de la sauvegarde: ' +
-          (usersResponse.message || questsResponse.message));
+        toast.error('Erreur lors de la sauvegarde: ' + questsResponse.message);
       }
     } catch (error) {
       console.error('Error saving changes:', error);
@@ -225,7 +218,7 @@ const Admin = () => {
 
     setIsLoading(true);
     try {
-      const response = await VercelDataService.deleteUser(userId);
+      const response = await AdminApiService.deleteUser(userId);
 
       if (response.success) {
         setUsers(users.filter(u => u.id !== userId));
@@ -251,7 +244,7 @@ const Admin = () => {
 
     setIsLoading(true);
     try {
-      const response = await VercelDataService.deleteQuest(questId);
+      const response = await AdminApiService.deleteQuest(questId);
 
       if (response.success) {
         setQuests(quests.filter(q => q.id !== questId));

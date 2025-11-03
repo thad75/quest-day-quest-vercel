@@ -315,4 +315,44 @@ export class AdminApiService {
       };
     }
   }
+
+  /**
+   * Delete a quest template
+   */
+  static async deleteQuest(questId: string): Promise<{ success: boolean; message: string }> {
+    try {
+      // Load all quest templates
+      const questsResponse = await this.getQuestsNew();
+      const quests = questsResponse.templates || {};
+
+      if (!quests[questId]) {
+        return {
+          success: false,
+          message: 'Quest not found'
+        };
+      }
+
+      // Remove the quest
+      delete quests[questId];
+
+      // Save updated templates
+      const result = await this.saveQuestTemplates(quests);
+
+      if (result.success) {
+        console.log('✅ Quest deleted successfully via admin API');
+        return {
+          success: true,
+          message: 'Quest deleted successfully'
+        };
+      } else {
+        throw new Error(result.message);
+      }
+    } catch (error) {
+      console.error('❌ Failed to delete quest via admin API:', error);
+      return {
+        success: false,
+        message: `Failed to delete quest: ${(error as Error).message}`
+      };
+    }
+  }
 }
