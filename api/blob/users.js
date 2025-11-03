@@ -126,7 +126,8 @@ export async function POST(request) {
     const blob = await put(primaryPath, JSON.stringify(updatedConfig, null, 2), {
       access: 'public',
       token: blobToken,
-      contentType: 'application/json'
+      contentType: 'application/json',
+      allowOverwrite: true
     });
 
     return new Response(
