@@ -11,7 +11,7 @@ A gamified daily quest tracking application built with React, TypeScript, and Ve
 - **Data Persistence**: Powered by Vercel Blob Storage
 - **Modern UI**: Built with shadcn-ui and Tailwind CSS
 
-## Technology Stack
+## Technology Stacknh
 
 - **Frontend**: React 18, TypeScript, Vite
 - **UI Components**: shadcn-ui, Radix UI, Tailwind CSS
