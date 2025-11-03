@@ -13,7 +13,7 @@ export class ApiService {
    */
   static async getUsers(): Promise<{ users: Record<string, UserConfig>; commonQuests: string[]; isBlobStore: boolean }> {
     try {
-      const response = await fetch(`${this.API_BASE}/users`);
+      const response = await fetch(`${this.API_BASE}/blob/users`);
 
       if (!response.ok) {
         throw new Error(`HTTP ${response.status}: ${response.statusText}`);
@@ -33,7 +33,7 @@ export class ApiService {
    */
   static async getQuests(): Promise<Record<string, QuestConfig>> {
     try {
-      const response = await fetch(`${this.API_BASE}/quests`);
+      const response = await fetch(`${this.API_BASE}/blob/quests`);
 
       if (!response.ok) {
         throw new Error(`HTTP ${response.status}: ${response.statusText}`);
@@ -53,7 +53,7 @@ export class ApiService {
    */
   static async verifyAdminPassword(password: string): Promise<boolean> {
     try {
-      const response = await fetch(`${this.API_BASE}/auth`, {
+      const response = await fetch(`${this.API_BASE}/blob/auth`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -83,7 +83,7 @@ export class ApiService {
     commonQuests: string[]
   ): Promise<{ success: boolean; message: string }> {
     try {
-      const response = await fetch(`${this.API_BASE}/users`, {
+      const response = await fetch(`${this.API_BASE}/blob/users`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -117,7 +117,7 @@ export class ApiService {
     quests: Record<string, QuestConfig>
   ): Promise<{ success: boolean; message: string }> {
     try {
-      const response = await fetch(`${this.API_BASE}/quests`, {
+      const response = await fetch(`${this.API_BASE}/blob/quests`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
