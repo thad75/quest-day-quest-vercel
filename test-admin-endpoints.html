@@ -1,0 +1,596 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin API Endpoints Test</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            margin-bottom: 20px;
+        }
+        .endpoint {
+            border: 1px solid #ddd;
+            border-radius: 6px;
+            padding: 15px;
+            margin-bottom: 15px;
+            background-color: #fafafa;
+        }
+        .endpoint h3 {
+            margin-top: 0;
+            color: #333;
+            border-bottom: 2px solid #007bff;
+            padding-bottom: 5px;
+        }
+        .form-group {
+            margin-bottom: 15px;
+        }
+        label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: 600;
+        }
+        input, textarea, select {
+            width: 100%;
+            padding: 8px 12px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 14px;
+            box-sizing: border-box;
+        }
+        button {
+            background-color: #007bff;
+            color: white;
+            padding: 10px 20px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 14px;
+            margin-right: 10px;
+        }
+        button:hover {
+            background-color: #0056b3;
+        }
+        button:disabled {
+            background-color: #ccc;
+            cursor: not-allowed;
+        }
+        .response {
+            margin-top: 15px;
+            padding: 10px;
+            border-radius: 4px;
+            font-family: 'Courier New', monospace;
+            font-size: 12px;
+            white-space: pre-wrap;
+            max-height: 300px;
+            overflow-y: auto;
+        }
+        .success {
+            background-color: #d4edda;
+            border: 1px solid #c3e6cb;
+            color: #155724;
+        }
+        .error {
+            background-color: #f8d7da;
+            border: 1px solid #f5c6cb;
+            color: #721c24;
+        }
+        .info {
+            background-color: #d1ecf1;
+            border: 1px solid #bee5eb;
+            color: #0c5460;
+        }
+        .grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+        }
+        .full-width {
+            grid-column: 1 / -1;
+        }
+        .stats {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+        .stat-card {
+            background: white;
+            padding: 15px;
+            border-radius: 6px;
+            border: 1px solid #ddd;
+            text-align: center;
+        }
+        .stat-number {
+            font-size: 24px;
+            font-weight: bold;
+            color: #007bff;
+        }
+        .stat-label {
+            font-size: 14px;
+            color: #666;
+            margin-top: 5px;
+        }
+    </style>
+</head>
+<body>
+    <h1>Admin API Endpoints Test Suite</h1>
+
+    <!-- Statistics Overview -->
+    <div class="container">
+        <h2>System Statistics</h2>
+        <div class="stats" id="stats">
+            <div class="stat-card">
+                <div class="stat-number" id="totalUsers">-</div>
+                <div class="stat-label">Total Users</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-number" id="totalQuests">-</div>
+                <div class="stat-label">Total Quests</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-number" id="apiTests">0</div>
+                <div class="stat-label">API Tests Run</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-number" id="successRate">0%</div>
+                <div class="stat-label">Success Rate</div>
+            </div>
+        </div>
+        <button onclick="loadStatistics()">Refresh Statistics</button>
+    </div>
+
+    <div class="grid">
+        <!-- Create User Endpoint -->
+        <div class="endpoint">
+            <h3>POST /api/blob/admin/create-user</h3>
+            <div class="form-group">
+                <label for="userName">User Name:</label>
+                <input type="text" id="userName" value="Test User" placeholder="Enter user name">
+            </div>
+            <div class="form-group">
+                <label for="userAvatar">Avatar:</label>
+                <input type="text" id="userAvatar" value="🧪" maxlength="2" placeholder="👤">
+            </div>
+            <div class="form-group">
+                <label for="userLevel">Starting Level:</label>
+                <input type="number" id="userLevel" value="1" min="1" max="99">
+            </div>
+            <div class="form-group">
+                <label for="userXP">Starting XP:</label>
+                <input type="number" id="userXP" value="0" min="0">
+            </div>
+            <button onclick="testCreateUser()">Create User</button>
+            <button onclick="createRandomUser()">Create Random User</button>
+            <div id="createUserResponse" class="response" style="display:none;"></div>
+        </div>
+
+        <!-- Modify User Endpoint -->
+        <div class="endpoint">
+            <h3>POST /api/blob/admin/modify-user</h3>
+            <div class="form-group">
+                <label for="modifyUserId">User ID:</label>
+                <input type="text" id="modifyUserId" placeholder="Enter user ID">
+            </div>
+            <div class="form-group">
+                <label for="modifyUserName">New Name:</label>
+                <input type="text" id="modifyUserName" placeholder="Enter new name">
+            </div>
+            <div class="form-group">
+                <label for="modifyUserAvatar">New Avatar:</label>
+                <input type="text" id="modifyUserAvatar" placeholder="👤" maxlength="2">
+            </div>
+            <div class="form-group">
+                <label for="modifyUserLevel">New Level:</label>
+                <input type="number" id="modifyUserLevel" min="1" max="99">
+            </div>
+            <button onclick="testModifyUser()">Modify User</button>
+            <button onclick="loadUsersForModify()">Load Users</button>
+            <div id="modifyUserResponse" class="response" style="display:none;"></div>
+        </div>
+
+        <!-- Delete User Endpoint -->
+        <div class="endpoint">
+            <h3>POST /api/blob/admin/delete-user</h3>
+            <div class="form-group">
+                <label for="deleteUserId">User ID:</label>
+                <input type="text" id="deleteUserId" placeholder="Enter user ID to delete">
+            </div>
+            <button onclick="testDeleteUser()">Delete User</button>
+            <button onclick="loadUsersForDelete()">Load Users</button>
+            <div id="deleteUserResponse" class="response" style="display:none;"></div>
+        </div>
+
+        <!-- Assign Tasks Endpoint -->
+        <div class="endpoint">
+            <h3>POST /api/blob/admin/assign-tasks</h3>
+            <div class="form-group">
+                <label for="assignUserId">User ID:</label>
+                <input type="text" id="assignUserId" placeholder="Enter user ID">
+            </div>
+            <div class="form-group">
+                <label for="taskAction">Action:</label>
+                <select id="taskAction">
+                    <option value="assign">Add to existing quests</option>
+                    <option value="replace">Replace all quests</option>
+                    <option value="remove">Remove selected quests</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label for="questIds">Quest IDs (comma-separated):</label>
+                <input type="text" id="questIds" value="1" placeholder="1,2,3">
+            </div>
+            <button onclick="testAssignTasks()">Assign Tasks</button>
+            <button onclick="loadQuestsForAssign()">Load Available Quests</button>
+            <div id="assignTasksResponse" class="response" style="display:none;"></div>
+        </div>
+    </div>
+
+    <!-- Bulk Operations -->
+    <div class="container full-width">
+        <h2>Bulk Operations</h2>
+        <div class="endpoint">
+            <h3>Bulk Create Users</h3>
+            <div class="form-group">
+                <label for="bulkUserCount">Number of Users to Create:</label>
+                <input type="number" id="bulkUserCount" value="5" min="1" max="20">
+            </div>
+            <button onclick="testBulkCreateUsers()">Create Multiple Users</button>
+            <div id="bulkCreateResponse" class="response" style="display:none;"></div>
+        </div>
+    </div>
+
+    <!-- Data Verification -->
+    <div class="container full-width">
+        <h2>Data Verification</h2>
+        <button onclick="testUsersNew()">Test GET /api/blob/users-new</button>
+        <button onclick="testQuestsNew()">Test GET /api/blob/quests-new</button>
+        <button onclick="verifyDataIntegrity()">Verify Data Integrity</button>
+        <div id="verificationResponse" class="response" style="display:none;"></div>
+    </div>
+
+    <script>
+        let testCount = 0;
+        let successCount = 0;
+
+        // Utility functions
+        function showResponse(elementId, data, isSuccess = true) {
+            const element = document.getElementById(elementId);
+            element.style.display = 'block';
+            element.className = `response ${isSuccess ? 'success' : 'error'}`;
+            element.textContent = JSON.stringify(data, null, 2);
+        }
+
+        function showInfo(elementId, message) {
+            const element = document.getElementById(elementId);
+            element.style.display = 'block';
+            element.className = 'response info';
+            element.textContent = message;
+        }
+
+        function updateTestStats(isSuccess) {
+            testCount++;
+            if (isSuccess) successCount++;
+
+            document.getElementById('apiTests').textContent = testCount;
+            document.getElementById('successRate').textContent =
+                testCount > 0 ? Math.round((successCount / testCount) * 100) + '%' : '0%';
+        }
+
+        async function makeRequest(url, method = 'GET', body = null) {
+            const options = {
+                method,
+                headers: {
+                    'Content-Type': 'application/json',
+                }
+            };
+
+            if (body) {
+                options.body = JSON.stringify(body);
+            }
+
+            try {
+                const response = await fetch(url, options);
+                const data = await response.json();
+                return { success: response.ok, data, status: response.status };
+            } catch (error) {
+                return { success: false, data: { error: error.message }, status: 0 };
+            }
+        }
+
+        // Test functions
+        async function testCreateUser() {
+            const userName = document.getElementById('userName').value;
+            const userAvatar = document.getElementById('userAvatar').value;
+            const userLevel = parseInt(document.getElementById('userLevel').value);
+            const userXP = parseInt(document.getElementById('userXP').value);
+
+            if (!userName) {
+                showInfo('createUserResponse', 'Please enter a user name');
+                return;
+            }
+
+            const userData = {
+                name: userName,
+                avatar: userAvatar || '👤',
+                stats: {
+                    currentLevel: userLevel,
+                    totalXP: userXP,
+                    questsCompleted: 0,
+                    totalQuestsCompleted: 0,
+                    currentStreak: 0,
+                    longestStreak: 0,
+                    currentXP: 0,
+                    xpToNextLevel: userLevel * 100
+                }
+            };
+
+            const result = await makeRequest('/api/blob/admin/create-user', 'POST', { userData });
+            showResponse('createUserResponse', result.data, result.success);
+            updateTestStats(result.success);
+
+            if (result.success) {
+                // Clear form
+                document.getElementById('userName').value = '';
+                document.getElementById('userLevel').value = '1';
+                document.getElementById('userXP').value = '0';
+                loadStatistics();
+            }
+        }
+
+        async function createRandomUser() {
+            const names = ['Alex', 'Sam', 'Jordan', 'Taylor', 'Morgan', 'Casey', 'Riley', 'Avery'];
+            const avatars = ['🦄', '🐉', '🦊', '🦁', '🐸', '🦋', '🐢', '🦜'];
+            const randomName = names[Math.floor(Math.random() * names.length)] + Math.floor(Math.random() * 1000);
+            const randomAvatar = avatars[Math.floor(Math.random() * avatars.length)];
+            const randomLevel = Math.floor(Math.random() * 10) + 1;
+
+            document.getElementById('userName').value = randomName;
+            document.getElementById('userAvatar').value = randomAvatar;
+            document.getElementById('userLevel').value = randomLevel;
+
+            await testCreateUser();
+        }
+
+        async function testModifyUser() {
+            const userId = document.getElementById('modifyUserId').value;
+            const userName = document.getElementById('modifyUserName').value;
+            const userAvatar = document.getElementById('modifyUserAvatar').value;
+            const userLevel = document.getElementById('modifyUserLevel').value;
+
+            if (!userId) {
+                showInfo('modifyUserResponse', 'Please enter a user ID');
+                return;
+            }
+
+            const userData = {};
+            if (userName) userData.name = userName;
+            if (userAvatar) userData.avatar = userAvatar;
+            if (userLevel) userData.stats = { currentLevel: parseInt(userLevel) };
+
+            const result = await makeRequest('/api/blob/admin/modify-user', 'POST', { userId, userData });
+            showResponse('modifyUserResponse', result.data, result.success);
+            updateTestStats(result.success);
+
+            if (result.success) {
+                loadStatistics();
+            }
+        }
+
+        async function testDeleteUser() {
+            const userId = document.getElementById('deleteUserId').value;
+
+            if (!userId) {
+                showInfo('deleteUserResponse', 'Please enter a user ID');
+                return;
+            }
+
+            if (!confirm(`Are you sure you want to delete user ${userId}?`)) {
+                return;
+            }
+
+            const result = await makeRequest('/api/blob/admin/delete-user', 'POST', { userId });
+            showResponse('deleteUserResponse', result.data, result.success);
+            updateTestStats(result.success);
+
+            if (result.success) {
+                document.getElementById('deleteUserId').value = '';
+                loadStatistics();
+            }
+        }
+
+        async function testAssignTasks() {
+            const userId = document.getElementById('assignUserId').value;
+            const taskAction = document.getElementById('taskAction').value;
+            const questIds = document.getElementById('questIds').value.split(',').map(id => id.trim()).filter(id => id);
+
+            if (!userId) {
+                showInfo('assignTasksResponse', 'Please enter a user ID');
+                return;
+            }
+
+            if (questIds.length === 0) {
+                showInfo('assignTasksResponse', 'Please enter at least one quest ID');
+                return;
+            }
+
+            const result = await makeRequest('/api/blob/admin/assign-tasks', 'POST', {
+                userId,
+                questIds,
+                action: taskAction
+            });
+            showResponse('assignTasksResponse', result.data, result.success);
+            updateTestStats(result.success);
+        }
+
+        async function testBulkCreateUsers() {
+            const count = parseInt(document.getElementById('bulkUserCount').value);
+            const results = [];
+
+            for (let i = 0; i < count; i++) {
+                const userData = {
+                    name: `Bulk User ${i + 1}`,
+                    avatar: ['🤖', '👾', '🎮', '🎯', '🎪'][i % 5],
+                    stats: {
+                        currentLevel: 1,
+                        totalXP: 0,
+                        questsCompleted: 0,
+                        totalQuestsCompleted: 0,
+                        currentStreak: 0,
+                        longestStreak: 0
+                    }
+                };
+
+                const result = await makeRequest('/api/blob/admin/create-user', 'POST', { userData });
+                results.push(result);
+
+                // Add small delay to avoid overwhelming the API
+                await new Promise(resolve => setTimeout(resolve, 100));
+            }
+
+            const successCount = results.filter(r => r.success).length;
+            const summary = {
+                total: count,
+                successful: successCount,
+                failed: count - successCount,
+                results: results.map(r => r.data)
+            };
+
+            showResponse('bulkCreateResponse', summary, successCount > 0);
+            updateTestStats(successCount === count);
+            loadStatistics();
+        }
+
+        async function loadStatistics() {
+            try {
+                const usersResult = await makeRequest('/api/blob/users-new');
+                const questsResult = await makeRequest('/api/blob/quests-new');
+
+                if (usersResult.success) {
+                    document.getElementById('totalUsers').textContent = usersResult.data.totalUsers || 0;
+                }
+
+                if (questsResult.success) {
+                    document.getElementById('totalQuests').textContent =
+                        Object.keys(questsResult.data.templates || {}).length;
+                }
+            } catch (error) {
+                console.error('Failed to load statistics:', error);
+            }
+        }
+
+        async function testUsersNew() {
+            const result = await makeRequest('/api/blob/users-new');
+            showResponse('verificationResponse', result.data, result.success);
+            updateTestStats(result.success);
+        }
+
+        async function testQuestsNew() {
+            const result = await makeRequest('/api/blob/quests-new');
+            showResponse('verificationResponse', result.data, result.success);
+            updateTestStats(result.success);
+        }
+
+        async function verifyDataIntegrity() {
+            const usersResult = await makeRequest('/api/blob/users-new');
+            const questsResult = await makeRequest('/api/blob/quests-new');
+
+            if (!usersResult.success || !questsResult.success) {
+                showInfo('verificationResponse', 'Failed to fetch base data for integrity check');
+                return;
+            }
+
+            const users = usersResult.data.users || {};
+            const quests = questsResult.data.templates || {};
+
+            const issues = [];
+            let validUsers = 0;
+            let validQuests = 0;
+
+            // Check user data integrity
+            for (const [userId, user] of Object.entries(users)) {
+                validUsers++;
+
+                if (!user.name || !user.stats) {
+                    issues.push(`User ${userId}: Missing required fields`);
+                }
+
+                if (user.stats.currentLevel < 1 || user.stats.totalXP < 0) {
+                    issues.push(`User ${userId}: Invalid stats values`);
+                }
+            }
+
+            // Check quest data integrity
+            for (const [questId, quest] of Object.entries(quests)) {
+                validQuests++;
+
+                if (!quest.title || !quest.description || !quest.xp) {
+                    issues.push(`Quest ${questId}: Missing required fields`);
+                }
+
+                if (quest.xp < 0) {
+                    issues.push(`Quest ${questId}: Invalid XP value`);
+                }
+            }
+
+            const report = {
+                summary: {
+                    totalUsers: validUsers,
+                    totalQuests: validQuests,
+                    issuesFound: issues.length,
+                    integrity: issues.length === 0 ? 'PASS' : 'FAIL'
+                },
+                issues: issues.length > 0 ? issues : 'No integrity issues found'
+            };
+
+            showResponse('verificationResponse', report, issues.length === 0);
+            updateTestStats(issues.length === 0);
+        }
+
+        async function loadUsersForModify() {
+            const result = await makeRequest('/api/blob/users-new');
+            if (result.success && result.data.users) {
+                const users = Object.entries(result.data.users)
+                    .map(([id, user]) => `${id}: ${user.name} (Level ${user.stats?.currentLevel || 1})`)
+                    .join('\n');
+                showInfo('modifyUserResponse', `Available Users:\n${users}`);
+            }
+        }
+
+        async function loadUsersForDelete() {
+            const result = await makeRequest('/api/blob/users-new');
+            if (result.success && result.data.users) {
+                const users = Object.entries(result.data.users)
+                    .map(([id, user]) => `${id}: ${user.name}`)
+                    .join('\n');
+                showInfo('deleteUserResponse', `Available Users:\n${users}`);
+            }
+        }
+
+        async function loadQuestsForAssign() {
+            const result = await makeRequest('/api/blob/quests-new');
+            if (result.success && result.data.templates) {
+                const quests = Object.entries(result.data.templates)
+                    .map(([id, quest]) => `${id}: ${quest.icon} ${quest.title} (${quest.difficulty}, ${quest.xp} XP)`)
+                    .join('\n');
+                showInfo('assignTasksResponse', `Available Quests:\n${quests}`);
+            }
+        }
+
+        // Initialize
+        window.onload = function() {
+            loadStatistics();
+        };
+    </script>
+</body>
+</html>

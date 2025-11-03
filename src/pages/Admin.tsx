@@ -10,6 +10,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { toast } from 'sonner';
 import { userManager, UserConfig, QuestConfig } from '@/lib/userManager';
 import { VercelDataService } from '@/lib/vercelDataService';
+import AdminUserManagement from '@/components/AdminUserManagement';
 import { Gamepad2, Users, Settings, LogOut, Save, Plus, Trash2, Edit, Download, Upload, FileText, Database, CheckCircle, AlertCircle, Copy, Cloud, Server } from 'lucide-react';
 
 const Admin = () => {
@@ -357,127 +358,9 @@ const Admin = () => {
             </TabsTrigger>
           </TabsList>
 
-          {/* Users Tab */}
+          {/* Users Tab - New Admin User Management */}
           <TabsContent value="users" className="space-y-6">
-            <div className="flex items-center justify-between">
-              <h2 className="text-xl font-semibold">Gestion des Utilisateurs</h2>
-              <Button onClick={handleCreateUser} className="btn-scale">
-                <Plus className="h-4 w-4 mr-2" />
-                Ajouter un utilisateur
-              </Button>
-            </div>
-
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-              {/* Users List */}
-              <Card>
-                <CardHeader>
-                  <CardTitle>Liste des utilisateurs</CardTitle>
-                  <CardDescription>{users.length} utilisateurs au total</CardDescription>
-                </CardHeader>
-                <CardContent className="space-y-3">
-                  {users.map((user) => (
-                    <div
-                      key={user.id}
-                      className={`p-3 rounded-lg border cursor-pointer transition-all hover:border-primary/50 ${
-                        selectedUser?.id === user.id ? 'border-primary bg-primary/5' : 'border-border/30'
-                      }`}
-                      onClick={() => setSelectedUser(user)}
-                    >
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-3">
-                          <span className="text-2xl">{user.avatar}</span>
-                          <div>
-                            <p className="font-medium">{user.name}</p>
-                            <p className="text-sm text-muted-foreground">
-                              Niv. {user.stats.currentLevel} • {user.stats.totalQuestsCompleted} quêtes
-                            </p>
-                          </div>
-                        </div>
-                        <div className="flex items-center gap-2">
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              setSelectedUser(user);
-                              setEditingMode('user');
-                            }}
-                          >
-                            <Edit className="h-3 w-3" />
-                          </Button>
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              handleDeleteUser(user.id);
-                            }}
-                          >
-                            <Trash2 className="h-3 w-3" />
-                          </Button>
-                        </div>
-                      </div>
-                    </div>
-                  ))}
-                </CardContent>
-              </Card>
-
-              {/* User Editor */}
-              {selectedUser && (
-                <Card>
-                  <CardHeader>
-                    <CardTitle>Éditer: {selectedUser.name}</CardTitle>
-                  </CardHeader>
-                  <CardContent className="space-y-4">
-                    <div className="grid grid-cols-2 gap-4">
-                      <div className="space-y-2">
-                        <Label>Nom</Label>
-                        <Input
-                          value={selectedUser.name}
-                          onChange={(e) => setSelectedUser({...selectedUser, name: e.target.value})}
-                        />
-                      </div>
-                      <div className="space-y-2">
-                        <Label>Avatar</Label>
-                        <Input
-                          value={selectedUser.avatar}
-                          onChange={(e) => setSelectedUser({...selectedUser, avatar: e.target.value})}
-                        />
-                      </div>
-                    </div>
-
-                    <div className="space-y-2">
-                      <Label>Niveau actuel</Label>
-                      <Input
-                        type="number"
-                        value={selectedUser.stats.currentLevel}
-                        onChange={(e) => setSelectedUser({
-                          ...selectedUser,
-                          stats: {...selectedUser.stats, currentLevel: parseInt(e.target.value)}
-                        })}
-                      />
-                    </div>
-
-                    <div className="space-y-2">
-                      <Label>XP totale</Label>
-                      <Input
-                        type="number"
-                        value={selectedUser.stats.totalXP}
-                        onChange={(e) => setSelectedUser({
-                          ...selectedUser,
-                          stats: {...selectedUser.stats, totalXP: parseInt(e.target.value)}
-                        })}
-                      />
-                    </div>
-
-                    <Button onClick={handleSaveUsers} className="w-full">
-                      <Save className="h-4 w-4 mr-2" />
-                      Sauvegarder les modifications
-                    </Button>
-                  </CardContent>
-                </Card>
-              )}
-            </div>
+            <AdminUserManagement onUsersUpdated={loadData} />
           </TabsContent>
 
           {/* Quests Tab */}
