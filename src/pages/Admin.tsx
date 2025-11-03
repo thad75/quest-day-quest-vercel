@@ -7,11 +7,12 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { toast } from 'sonner';
 import { userManager, UserConfig, QuestConfig } from '@/lib/userManager';
 import { VercelDataService } from '@/lib/vercelDataService';
 import AdminUserManagement from '@/components/AdminUserManagement';
-import { Gamepad2, Users, Settings, LogOut, Save, Plus, Trash2, Edit, Download, Upload, FileText, Database, CheckCircle, AlertCircle, Copy, Cloud, Server } from 'lucide-react';
+import { Gamepad2, Users, Settings, LogOut, Save, Plus, Trash2, Edit, Download, Upload, FileText, Database, CheckCircle, AlertCircle, Copy, Cloud, Server, X } from 'lucide-react';
 
 const Admin = () => {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
@@ -23,6 +24,8 @@ const Admin = () => {
   const [editingMode, setEditingMode] = useState<'user' | 'quest' | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [isBlobStoreAvailable, setIsBlobStoreAvailable] = useState(true);
+  const [editingQuest, setEditingQuest] = useState<QuestConfig | null>(null);
+  const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
 
   const navigate = useNavigate();
 
@@ -159,7 +162,54 @@ const Admin = () => {
       requirements: []
     };
     setQuests([...quests, newQuest]);
-    toast.success('Nouvelle quête créée');
+    setEditingQuest(newQuest);
+    setIsEditDialogOpen(true);
+    toast.success('Nouvelle quête créée - Modifiez les détails');
+  };
+
+  const handleEditQuest = (quest: QuestConfig) => {
+    setEditingQuest({ ...quest });
+    setIsEditDialogOpen(true);
+  };
+
+  const handleSaveQuest = async () => {
+    if (!editingQuest) return;
+
+    if (!editingQuest.title || !editingQuest.description) {
+      toast.error('Le titre et la description sont requis');
+      return;
+    }
+
+    setIsLoading(true);
+    try {
+      // Update the quest in the quests array
+      const updatedQuests = quests.map(q =>
+        q.id === editingQuest.id ? editingQuest : q
+      );
+      setQuests(updatedQuests);
+
+      // Save to backend
+      const questsRecord = updatedQuests.reduce((acc, quest) => {
+        acc[quest.id] = quest;
+        return acc;
+      }, {} as Record<string, QuestConfig>);
+
+      const response = await VercelDataService.updateQuestsConfig(questsRecord);
+
+      if (response.success) {
+        toast.success('Quête sauvegardée avec succès !');
+        setIsEditDialogOpen(false);
+        setEditingQuest(null);
+        await userManager.loadConfigs();
+      } else {
+        toast.error('Erreur lors de la sauvegarde: ' + response.message);
+      }
+    } catch (error) {
+      console.error('Error saving quest:', error);
+      toast.error('Erreur lors de la sauvegarde de la quête');
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   
@@ -389,7 +439,7 @@ const Admin = () => {
                         <Button
                           size="sm"
                           variant="outline"
-                          onClick={() => {/* Edit quest */}}
+                          onClick={() => handleEditQuest(quest)}
                         >
                           <Edit className="h-3 w-3" />
                         </Button>
@@ -423,6 +473,166 @@ const Admin = () => {
               Sauvegarder toutes les quêtes
             </Button>
           </TabsContent>
+
+          {/* Quest Edit Dialog */}
+          <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
+            <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+              <DialogHeader>
+                <DialogTitle>Éditer la Quête</DialogTitle>
+                <DialogDescription>
+                  Modifiez les détails de la quête ci-dessous
+                </DialogDescription>
+              </DialogHeader>
+
+              {editingQuest && (
+                <div className="space-y-4 py-4">
+                  {/* Icon */}
+                  <div className="grid grid-cols-4 items-center gap-4">
+                    <Label htmlFor="icon" className="text-right">
+                      Icône
+                    </Label>
+                    <Input
+                      id="icon"
+                      value={editingQuest.icon}
+                      onChange={(e) => setEditingQuest({ ...editingQuest, icon: e.target.value })}
+                      placeholder="📋"
+                      className="col-span-3"
+                      maxLength={2}
+                    />
+                  </div>
+
+                  {/* Title */}
+                  <div className="grid grid-cols-4 items-center gap-4">
+                    <Label htmlFor="title" className="text-right">
+                      Titre *
+                    </Label>
+                    <Input
+                      id="title"
+                      value={editingQuest.title}
+                      onChange={(e) => setEditingQuest({ ...editingQuest, title: e.target.value })}
+                      placeholder="Titre de la quête"
+                      className="col-span-3"
+                    />
+                  </div>
+
+                  {/* Description */}
+                  <div className="grid grid-cols-4 items-center gap-4">
+                    <Label htmlFor="description" className="text-right">
+                      Description *
+                    </Label>
+                    <Textarea
+                      id="description"
+                      value={editingQuest.description}
+                      onChange={(e) => setEditingQuest({ ...editingQuest, description: e.target.value })}
+                      placeholder="Description de la quête"
+                      className="col-span-3"
+                      rows={3}
+                    />
+                  </div>
+
+                  {/* XP */}
+                  <div className="grid grid-cols-4 items-center gap-4">
+                    <Label htmlFor="xp" className="text-right">
+                      XP
+                    </Label>
+                    <Input
+                      id="xp"
+                      type="number"
+                      value={editingQuest.xp}
+                      onChange={(e) => setEditingQuest({ ...editingQuest, xp: parseInt(e.target.value) || 0 })}
+                      placeholder="10"
+                      className="col-span-3"
+                      min={0}
+                    />
+                  </div>
+
+                  {/* Difficulty */}
+                  <div className="grid grid-cols-4 items-center gap-4">
+                    <Label htmlFor="difficulty" className="text-right">
+                      Difficulté
+                    </Label>
+                    <Select
+                      value={editingQuest.difficulty}
+                      onValueChange={(value: 'facile' | 'moyen' | 'difficile') =>
+                        setEditingQuest({ ...editingQuest, difficulty: value })
+                      }
+                    >
+                      <SelectTrigger className="col-span-3">
+                        <SelectValue placeholder="Sélectionnez la difficulté" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="facile">Facile</SelectItem>
+                        <SelectItem value="moyen">Moyen</SelectItem>
+                        <SelectItem value="difficile">Difficile</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  {/* Category */}
+                  <div className="grid grid-cols-4 items-center gap-4">
+                    <Label htmlFor="category" className="text-right">
+                      Catégorie
+                    </Label>
+                    <Select
+                      value={editingQuest.category}
+                      onValueChange={(value) => setEditingQuest({ ...editingQuest, category: value })}
+                    >
+                      <SelectTrigger className="col-span-3">
+                        <SelectValue placeholder="Sélectionnez la catégorie" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="santé">Santé</SelectItem>
+                        <SelectItem value="apprentissage">Apprentissage</SelectItem>
+                        <SelectItem value="sport">Sport</SelectItem>
+                        <SelectItem value="créativité">Créativité</SelectItem>
+                        <SelectItem value="social">Social</SelectItem>
+                        <SelectItem value="productivité">Productivité</SelectItem>
+                        <SelectItem value="personnel">Personnel</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  {/* Tags */}
+                  <div className="grid grid-cols-4 items-center gap-4">
+                    <Label htmlFor="tags" className="text-right">
+                      Tags
+                    </Label>
+                    <Input
+                      id="tags"
+                      value={editingQuest.tags.join(', ')}
+                      onChange={(e) =>
+                        setEditingQuest({
+                          ...editingQuest,
+                          tags: e.target.value.split(',').map(t => t.trim()).filter(t => t)
+                        })
+                      }
+                      placeholder="tag1, tag2, tag3"
+                      className="col-span-3"
+                    />
+                  </div>
+
+                  {/* Action Buttons */}
+                  <div className="flex justify-end gap-2 pt-4">
+                    <Button
+                      variant="outline"
+                      onClick={() => {
+                        setIsEditDialogOpen(false);
+                        setEditingQuest(null);
+                      }}
+                      disabled={isLoading}
+                    >
+                      <X className="h-4 w-4 mr-2" />
+                      Annuler
+                    </Button>
+                    <Button onClick={handleSaveQuest} disabled={isLoading}>
+                      <Save className="h-4 w-4 mr-2" />
+                      {isLoading ? 'Sauvegarde...' : 'Sauvegarder'}
+                    </Button>
+                  </div>
+                </div>
+              )}
+            </DialogContent>
+          </Dialog>
 
           
           {/* Stats Tab */}
