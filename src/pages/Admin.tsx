@@ -11,6 +11,7 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } f
 import { toast } from 'sonner';
 import { userManager, UserConfig, QuestConfig } from '@/lib/userManager';
 import { VercelDataService } from '@/lib/vercelDataService';
+import { AdminApiService } from '@/lib/adminApiService';
 import AdminUserManagement from '@/components/AdminUserManagement';
 import { Gamepad2, Users, Settings, LogOut, Save, Plus, Trash2, Edit, Download, Upload, FileText, Database, CheckCircle, AlertCircle, Copy, Cloud, Server, X } from 'lucide-react';
 
@@ -34,14 +35,20 @@ const Admin = () => {
 
     setIsLoading(true);
     try {
-      // Load configuration from Blob Store
+      // Load configuration from Blob Store using NEW endpoints
       await userManager.loadConfigs();
-      const usersData = await userManager.getAvailableUsers();
-      const questsData = await userManager.getAllQuests();
+
+      // Load users from new endpoint
+      const usersResponse = await AdminApiService.getUsersNew();
+      const usersData = Object.values(usersResponse.users || {});
+
+      // Load quests from new endpoint
+      const questsResponse = await AdminApiService.getQuestsNew();
+      const questsData = Object.values(questsResponse.templates || {});
 
       setUsers(usersData);
       setQuests(questsData);
-      setCommonQuests(userManager.getUsersConfig()?.commonQuests || []);
+      setCommonQuests([]); // TODO: commonQuests in new structure
       setIsBlobStoreAvailable(true);
 
       toast.success('Configuration chargée depuis Blob Store');
@@ -188,13 +195,13 @@ const Admin = () => {
       );
       setQuests(updatedQuests);
 
-      // Save to backend
+      // Save to backend using the NEW endpoint
       const questsRecord = updatedQuests.reduce((acc, quest) => {
         acc[quest.id] = quest;
         return acc;
       }, {} as Record<string, QuestConfig>);
 
-      const response = await VercelDataService.updateQuestsConfig(questsRecord);
+      const response = await AdminApiService.saveQuestTemplates(questsRecord);
 
       if (response.success) {
         toast.success('Quête sauvegardée avec succès !');
@@ -285,8 +292,20 @@ const Admin = () => {
   const handleExportFullConfig = async () => {
     setIsLoading(true);
     try {
-      await handleSaveChanges();
-      toast.success('Configuration complète exportée avec succès');
+      // Save all quests using the NEW endpoint
+      const questsRecord = quests.reduce((acc, quest) => {
+        acc[quest.id] = quest;
+        return acc;
+      }, {} as Record<string, QuestConfig>);
+
+      const response = await AdminApiService.saveQuestTemplates(questsRecord);
+
+      if (response.success) {
+        toast.success('Toutes les quêtes sauvegardées avec succès !');
+        await userManager.loadConfigs();
+      } else {
+        toast.error('Erreur lors de la sauvegarde: ' + response.message);
+      }
     } catch (error) {
       console.error('Error exporting full config:', error);
       toast.error('Erreur lors de l\'export de la configuration');

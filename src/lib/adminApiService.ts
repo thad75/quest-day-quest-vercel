@@ -278,4 +278,41 @@ export class AdminApiService {
       };
     }
   }
+
+  /**
+   * Save quest templates to the new data structure
+   */
+  static async saveQuestTemplates(questsRecord: Record<string, QuestConfig>): Promise<{ success: boolean; message: string }> {
+    try {
+      const response = await fetch('/api/blob/quests-new', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          action: 'save_template',
+          questData: questsRecord
+        }),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || `HTTP ${response.status}: ${response.statusText}`);
+      }
+
+      const data = await response.json();
+      console.log('✅ Quest templates saved successfully via admin API');
+
+      return {
+        success: data.success,
+        message: data.message || 'Quest templates saved successfully'
+      };
+    } catch (error) {
+      console.error('❌ Failed to save quest templates via admin API:', error);
+      return {
+        success: false,
+        message: `Failed to save quest templates: ${(error as Error).message}`
+      };
+    }
+  }
 }
