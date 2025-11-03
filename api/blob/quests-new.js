@@ -16,17 +16,18 @@ export async function GET(request) {
     }
 
     const { searchParams } = new URL(request.url);
-    const date = searchParams.get('date') || new Date().toISOString().split('T')[0]; // YYYY-MM-DD
+    const dateParam = searchParams.get('date');
     const level = searchParams.get('level');
 
     if (level) {
       // Get specific quests for date and level
+      const date = dateParam || new Date().toISOString().split('T')[0];
       return getQuestsForDateAndLevel(date, level, blobToken);
-    } else if (date) {
-      // Get all quests for a specific date
-      return getQuestsForDate(date, blobToken);
+    } else if (dateParam) {
+      // Get all quests for a specific date (only if date was explicitly provided)
+      return getQuestsForDate(dateParam, blobToken);
     } else {
-      // Get all quest templates
+      // Get all quest templates (default behavior when no parameters provided)
       return getQuestTemplates(blobToken);
     }
 
