@@ -58,12 +58,20 @@ export class QuestManager {
       adaptToPlayerLevel: true,
     };
 
-    // Check if we need to regenerate quests
-    if (!currentState || currentState.date !== today) {
-      // IMPORTANT: Check if user has admin-assigned quests
-      const assignedQuests = await this.getAssignedQuestsForUser(profile);
+    // ALWAYS check for admin-assigned quests first (even if cache exists)
+    const assignedQuests = await this.getAssignedQuestsForUser(profile);
 
-      if (assignedQuests && assignedQuests.length > 0) {
+    // Check if we need to regenerate quests OR if assigned quests have changed
+    const hasAssignedQuests = assignedQuests && assignedQuests.length > 0;
+    const needsRegeneration = !currentState || currentState.date !== today;
+    const assignedQuestsChanged = hasAssignedQuests && (
+      !currentState ||
+      currentState.dailyQuests.length !== assignedQuests.length ||
+      !this.areQuestsEqual(currentState.dailyQuests, assignedQuests)
+    );
+
+    if (needsRegeneration || assignedQuestsChanged) {
+      if (hasAssignedQuests) {
         // Use admin-assigned quests instead of generating random ones
         currentState = this.createStateFromAssignedQuests(today, assignedQuests);
         console.log('📋 Using admin-assigned quests:', assignedQuests.length, 'quests');
@@ -80,16 +88,8 @@ export class QuestManager {
       }
       this.saveDailyQuests(currentState);
     } else {
-      // Check if individual granularities need updates
-      currentState = this.questGenerator.updateQuestsForGranularity(
-        currentState,
-        today,
-        'daily',
-        profile.currentLevel,
-        config,
-        this.getRecentlyCompletedQuests()
-      );
-      this.saveDailyQuests(currentState);
+      // Keep existing state if nothing changed
+      console.log('✅ Using cached quests (no changes detected)');
     }
 
     return currentState;
@@ -145,6 +145,20 @@ export class QuestManager {
       totalProgress: 0,
       completedCount: 0
     };
+  }
+
+  // Compare if two quest arrays are equal (by IDs)
+  private areQuestsEqual(cachedQuests: Quest[], newQuests: Quest[]): boolean {
+    if (cachedQuests.length !== newQuests.length) return false;
+
+    const cachedIds = new Set(cachedQuests.map(q => q.id));
+    const newIds = new Set(newQuests.map(q => q.id));
+
+    for (const id of cachedIds) {
+      if (!newIds.has(id)) return false;
+    }
+
+    return true;
   }
 
   // Toggle quest completion
